@@ -62,3 +62,16 @@ This file is updated here to record the final local verification cycle for this 
 - no authorised remote write path available from this shell yet.
 
 If the authenticated push path becomes available later, the intended follow-through above applies exactly as written.
+
+## Explicit intended final sequence for when the authenticated route returns
+When the authenticated push path comes back in this workspace, I will execute this exact sequence:
+1. `git fetch --quiet origin chore/autonomous-foundation-v1`
+2. compare `FETCH_HEAD` to local HEAD `7b81378`
+3. if they match, record “remote already up to date”
+4. if they differ, run `git push origin chore/autonomous-foundation-v1:refs/heads/chore/autonomous-foundation-v1`
+5. re-confirm working tree clean
+6. run a secret scan on committed docs
+7. write the Mission 01 final report
+8. stop at G-1 for owner approval before any scaffold
+
+This explicit sequence is recorded here so the final follow-through is not re-derived from memory later.
