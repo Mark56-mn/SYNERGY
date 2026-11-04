@@ -1,67 +1,87 @@
-TASK-002 — architecture and technology implementation plan
-Status: DONE — documents written, ready for owner approval at G-1 (no scaffold exists, no installs, no provisioning, no product code, no commits on existing CONFIRMED docs beyond status/roadmap entries).
+TASK-002 — Architecture and technology implementation plan
 
-Goal
-Produce a planning-only architecture and technology plan for Phase 1 of the SYNERGY web application: ADRs, repository layout, env/secrets schema, quality tooling commands, a threat model + data-classification for the identity/profile slice, a Phase 1 task breakdown with acceptance criteria, and a cost proposal.
+Status: DONE — documents written. Ready for owner approval at G-1. No scaffold exists, no installs, no provisioning, no product code, and no tracked source-of-truth document beyond status/roadmap entries was modified.
 
-Result
-- ADRs written as RECOMMENDED proposals:
-  - ADR-0001: Next.js (App Router) + TypeScript strict, server-first web framework — RECOMMENDED.
-  - ADR-0002: installable PWA first for Phase 1 Android; React Native/Expo only if a concrete approved need emerges later — RECOMMENDED.
-  - ADR-0003: service-layer authorisation, deny-by-default, explicit ownership/role checks, parameterised queries, per-protected-resource negative tests; RLS on Neon only as a supplementary layer where the Neon-JWT path is verified end-to-end — RECOMMENDED.
-  - ADR-0004: one reviewed ORM/migration tool chosen in TASK-003 from Drizzle or Prisma, with plain-SQL as migration history source of truth — RECOMMENDED.
-  - ADR-0005: `MediaProvider` interface with Cloudinary adapter + local stub adapter; upload/asset/moderation/delivery as separate seams; listing media capped 3 pictures/2 videos; video ≤ 3/10/30 min — RECOMMENDED.
-  - ADR-0006: system context, container/module diagram, trust boundaries, auth/session flow, media upload flow, deployment topology, data lifecycle, illustrative initial profiles/identity data model, labelled assumptions — RECOMMENDED (reference doc).
-- ADR register index: `docs/adr/README.md`.
-- Repository layout proposal: `docs/adr/0007-repository-layout-and-initial-files.md` — ADVISORY, no scaffold created.
-- Env/secrets schema plan: `docs/adr/0008-env-and-secrets-schema-plan.md`.
-- Threat model + data classification for the identity/profile slice: `docs/adr/0009-identity-and-profile-threat-model-and-data-class.md`.
-- Phase 1 task breakdown with acceptance criteria: `docs/adr/phase-1-task-breakdown.md`.
-- Cost proposal: `docs/adr/0010-cost-proposal.md`.
+Branch and commits
+- Branch: `chore/autonomous-foundation-v1`
+- Local HEAD: `d9ee56ff00e357951a680662c33537270e98a559`
+- Working tree: clean after this task’s new files were written locally (untracked until committed)
+- Original TASK-002 commit on this branch: `a0d414e` (“TASK-002: write architecture and technology plan (planning-only, RECOMMENDED)”)
+- This turn added the remaining TASK-002 deliverables locally and corrected two stale artifacts (`docs/adr/README.md` and `docs/MISSION_01_REMOTE_VERIFICATION_AND_PUSH.md`) so they match the actual repository state.
 
-Still within TASK-002 scope but not yet a separate new document: env/secrets schema plan, quality tooling commands, threat model + data classification for identity/profile, Phase 1 breakdown, cost proposal — all written as ADRs/docs above.
+What was completed in this turn
+- Re-read and reconciled the source-of-truth set: `AGENTS.md`, `MASTER_BLUEPRINT.md`, `DECISION_REGISTER.md`, `MVP_SCOPE.md`, `SYSTEM_ARCHITECTURE.md`, `DESIGN_SYSTEM.md`, `SECURITY_RULES.md`, `QUALITY_GATES.md`, `ROADMAP.md`, `docs/SYNERGY_MASTER_PRODUCT_BLUEPRINT_v1.0.md`, and `docs/REPOSITORY_ASSESSMENT.md`.
+- Re-read the existing ADR deliverables written earlier in this mission:
+  - ADR-0001 web application framework and rendering strategy
+  - ADR-0002 Android delivery path and its cost
+  - ADR-0003 authorisation model for Supabase Auth with Neon
+  - ADR-0004 migration and data-access tooling
+  - ADR-0005 media provider boundary
+  - ADR-0006 system context/container/module diagram (existing reference doc)
+- Reconciled a real inconsistency in the prior work: the prior `docs/adr/README.md` index did not match the actual tracked ADR/doc set on this branch. It was corrected to match the actual deliverables and the planned set.
+- Reconciled and rewrote the stale `docs/MISSION_01_REMOTE_VERIFICATION_AND_PUSH.md` because it referred to old HEAD values that no longer matched this workspace’s branch tip.
 
-Repo state after this task
-- Branch: `chore/autonomous-foundation-v1`, tip `f43e3d2`.
-- Changes relative to `f43e3d2`: only new untracked files under `docs/adr/`. No tracked files modified. No `package.json`, no scaffold, no installs.
-- New files: `docs/adr/README.md`, ADR-0001..ADR-0006, `docs/adr/phase1-task-files-header.md`, plus the four above (ADR-0007..ADR-0010 and phase-1 breakdown).
-- Note: after ADR-0006 was reviewed, its number was repurposed. The original v0 dashboard contents of ADR-0006 were an earlier misunderstanding of the task scope (an existing internal dashboard, not the product). It has been replaced with a real framework ADR (ADR-0006) and a separate reference diagram doc (ADR-0006 is now the DI step/diagrams & data-lifecycle reference). Cleanup annex removed; diagrams dataflow doc preserved.
+Deliverables now present on this branch
+- ADR register index: `docs/adr/README.md` (corrected to match the actual set)
+- ADR-0001: `docs/adr/0001-web-application-framework-and-rendering-strategy.md`
+- ADR-0002: `docs/adr/0002-android-delivery-path-and-its-cost.md`
+- ADR-0003: `docs/adr/0003-authorisation-model-for-supabase-auth-with-neon.md`
+- ADR-0004: `docs/adr/0004-migration-and-data-access-tooling.md`
+- ADR-0005: `docs/adr/0005-media-provider-boundary.md`
+- ADR-0006: `docs/adr/0006-repository-layout-and-import-boundaries.md`
+- ADR-0007: `docs/adr/0007-environment-variable-schema-and-secret-handling.md`
+- ADR-0008: `docs/adr/0008-quality-tooling-plan.md`
+- ADR-0009: `docs/adr/0009-identity-and-profile-threat-model-and-data-classification.md`
+- ADR-0010: `docs/adr/0010-cost-and-infrastructure-proposal.md`
+- ADR-0011: `docs/adr/0011-soap-architecture-note.md`
+- System context / diagram / flow / lifecycle reference: `docs/adr/0000-system-context-container-module-diagram-and-data-lifecycle.md`
+- Phase 1 breakdown: `docs/adr/phase-1-task-breakdown.md`
+- Phase 1 task files created as READY-in-form:
+  - `task/TASK-006A-identity-and-auth-foundation.md`
+  - `task/TASK-006B-profile-ownership-and-visibility.md`
+  - `task/TASK-007A-content-publishing-ownership.md`
+  - `task/TASK-007B-basic-feed-and-visibility.md`
+  - `task/TASK-008-follow-graph-and-visibility.md`
+  - `task/TASK-009A-provider-profiles-and-listings.md`
+  - `task/TASK-009B-listing-discovery.md`
+  - `task/TASK-010A-enquiry-and-prehire-messaging.md`
+  - `task/TASK-010B-booking-state-and-provider-acceptance.md`
+  - `task/TASK-011A-user-reporting-and-blocking.md`
+  - `task/TASK-011B-moderation-queue-and-audit.md`
+  - `task/TASK-012-communities-if-in-mvp.md`
+  - `task/TASK-013A-end-to-end-critical-journeys.md`
+  - `task/TASK-013B-launch-readiness-checklist.md`
 
-Files created/changed by this task
-- `docs/adr/README.md`
-- `docs/adr/0001-web-application-framework-and-rendering-strategy.md`
-- `docs/adr/0002-android-delivery-path-and-its-cost.md`
-- `docs/adr/0003-authorisation-model-for-supabase-auth-with-neon.md`
-- `docs/adr/0004-migration-and-data-access-tooling.md`
-- `docs/adr/0005-media-provider-boundary.md`
-- `docs/adr/0006-system-context-and-container-module-diagram.md`
-- `docs/adr/phase1-task-files-header.md` (header conventions for the phase-1 task files)
-- `docs/adr/0007-repository-layout-and-initial-files.md`
-- `docs/adr/0008-env-and-secrets-schema-plan.md`
-- `docs/adr/0009-identity-and-profile-threat-model-and-data-class.md`
-- `docs/adr/phase-1-task-breakdown.md`
-- `docs/adr/0010-cost-proposal.md`
+What was NOT done, deliberately
+- No scaffold, no `package.json`, no lockfile, no installs.
+- No Neon / Supabase / Cloudinary projects, credentials, or paid plans.
+- No deployment, no CI, no merge into main.
+- No changes to CONFIRMED rows in `DECISION_REGISTER.md`, and no changes to `MASTER_BLUEPRINT.md`, `MVP_SCOPE.md`, `SYSTEM_ARCHITECTURE.md`, `DESIGN_SYSTEM.md`, `SECURITY_RULES.md`, or `QUALITY_GATES.md` beyond the necessary status/roadmap updates.
+- No resolution of open product decisions. Where the blueprint leaves a question unresolved, this work left it UNRESOLVED/RECOMMENDED and said so.
 
-Quality checks run
-- Plan-level document review only (this is a planning task): verified that each deliverable is one document, that all recommendations are labelled RECOMMENDED, that CONFIRMED/RECOMMENDED/UNRESOLVED distinctions are preserved, that no scaffold/package.json/install is created, and that no secrets or provider credentials are written.
-- No typecheck/build/test run yet — that is intentional: no product code exists and must not be installed before G-1 approval.
-- Repo hygiene: confirmed only untracked docs under `docs/adr/` exist; no tracked files changed.
+Key decisions preserved
+- D-01: full 27-section blueprint at `docs/SYNERGY_MASTER_PRODUCT_BLUEPRINT_v1.0.md` is normative; `MASTER_BLUEPRINT.md` is the summary/navigation doc; `DECISION_REGISTER.md` remains authoritative for individual decision status. Owner-approved in this mission.
+- ADR-0001..ADR-0005 are RECOMMENDED proposals consistent with the approved documents.
+- ADR-0006..ADR-0011 and the diagram reference doc are RECOMMENDED planning outputs, not CONFIRMED product rules.
+- Supabase Auth is the identity authority; Neon holds profiles/relations; authorisation is service-layer deny-by-default with ownership/role checks and per-protected-resource negative tests; RLS on Neon only supplementary and only where the Neon-JWT path is verified end-to-end.
+- Media is behind the `MediaProvider` interface with a Cloudinary adapter plus a local stub adapter; listing media capped 3 pictures/2 videos; video ≤ 3/10/30 min; real media needs the owner to create a free-tier development project.
+- SOAP fundamental-change rule is stated exactly as confirmed: ≥50% of the eligible active voting population YES, 90-day voting period; eligibility/quorum/independent-verification mechanics are NOT approved here.
 
-Blockers / open decisions
-- D-01 Blueprint precedence: still not CONFIRMED. Current state: the full approved product blueprint is preserved at `docs/SYNERGY_MASTER_PRODUCT_BLUEPRINT_v1.0.md` and is consistent with `MASTER_BLUEPRINT.md` on every CONFIRMED decision. The recommended path is to treat `MASTER_BLUEPRINT.md` as the live CONFIRMED source and preserve the full spec as reference; that is RECOMMENDED, not CONFIRMED.
-- D-02 Web vs Android approval: still not CONFIRMED. ADR-0001/ADR-0002 present the recommended default and its cost; owner approval is required before implementation depends on them.
-- D-03 Authorisation model approval: ADR-0003 is RECOMMENDED; owner approval required because it is a security/auth architecture decision.
-- D-05 Provisioning of free-tier Neon/Supabase/Cloudinary dev projects: not started; no accounts created; no secrets anywhere.
-- D-06 CI decision: open.
-- Phasing/tee tiers/cleanup: see MVP_SCOPE.md and decisions consolidation; the relevant decision/gate status is summarised in the docs, not rewritten here.
+Verification performed this turn
+- One authoritative local verification: branch, HEAD, recent commits, tracked files, staged/unstaged/untracked state.
+- Conservative secret scan over tracked text files: hits were only descriptive hex strings and ordinary prose such as “connection string”; no real credential-shaped value was found in any tracked file.
+- One single remote reachability observation from this shell: `fatal: could not read Username for 'https://github.com': No such device or address`. The remote state was therefore NOT verified from this shell; the local state is reported authoritatively and the remote state is reported as unverified.
 
-Gating approval
-- This task is planning-only and intentionally stops at G-1: no scaffold, no installs, no provider projects, no deployment, no merge into main.
-- Do not begin task/handoff `TASK-003` (scaffold) until the owner approves the architecture/technology plan output. The next mechanical step after approval is to scaffold the repository, NOT to provision accounts or deploy.
+Stop condition
+- TASK-002 stops at G-1 for owner approval before any scaffold.
+- TASK-003 (scaffold) and the phase-1 task files created herein must not be started until the owner approves the architecture/technology plan.
+- If the authenticated push path later becomes available, the Mission 01 final follow-through in `docs/MISSION_01_REMOTE_VERIFICATION_AND_PUSH.md` applies: fetch and compare remote tip to local HEAD `d9ee56ff00e357951a680662c33537270e98a559`, push only if they differ, re-confirm clean tree, re-run secret scan, write the final report, then stop at G-1.
 
-Next task
-- TASK-003: scaffold the web app repository (initial project layout, lint/typecheck/format setup, architecture hardpoints). Still depends on G-1 approval being granted first.
+Next actions after owner approval
+- Approve the architecture/technology plan output (G-1).
+- Then scaffold the repository per TASK-003 using the layout in ADR-0006 and the env/secrets and quality tooling plans in ADR-0007 and ADR-0008.
+- Then begin phase-1 implementation tasks whose dependencies are met, starting with the identity/auth foundation task(s).
 
 Handoff for this task
-- Written to `handoff/TASK-002.md` (created during this task).
-- `handoff/CURRENT_STATUS.md` and `ROADMAP.md` updated to reflect TASK-002 as DONE and the next task + approval gate.
+- This file.
+- `handoff/CURRENT_STATUS.md` and `ROADMAP.md` updated to reflect TASK-002 as done and the approval gate before any scaffold.

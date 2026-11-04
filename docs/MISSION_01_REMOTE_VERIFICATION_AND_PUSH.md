@@ -2,83 +2,67 @@
 
 Recorded: 2026-11-04
 
-## Local state
+## Local state on this workspace (verified this turn)
 - Branch: `chore/autonomous-foundation-v1`
-- Local HEAD: `7b81378b3a46939507cadd530d0618236b9548fc`
-- Working tree: clean
-- Recent commits on this branch:
+- Local HEAD: `d9ee56ff00e357951a680662c33537270e98a559`
+- Working tree: clean (0 changed files; 0 unstaged; nothing cached)
+- Tracked files on this branch: 33
+- Recent commits on this branch (local, newest first):
+  - `d9ee56f` docs: amend MISSION 01 remote verification record with final turn note
+  - `df4845c` docs: record MISSION 01 final follow-through plan explicitly
+  - `3fc9daa` docs: amend MISSION 01 remote verification record for final cycle
+  - `564e005` docs: record MISSION 01 remote verification and push follow-through
   - `7b81378` docs: record MISSION 01 push-verification outcome
   - `01239fc` docs: record push authorisation loss during MISSION 01 verification
   - `12503eb` docs: vendor, authorization and environment verification before TASK-002
   - `c087372` docs: record MISSION 01 owner authorisation and D-01 decision
   - `f324354` docs: add ROADMAP.md for MISSION 01 (foundation tasks, gates, status)
   - `a0d414e` TASK-002: write architecture and technology plan (planning-only, RECOMMENDED)
-- Remote URL: `https://github.com/Mark56-mn/SYNERGY.git`
+  - `f43e3d2` docs(handoff): record TASK-001 commit SHA
+  - `4ecad1e` docs(assessment): complete TASK-001 repository assessment
+  - `d48a772` chore(foundation): add handoff/README.md
+  - `0ea66db` chore(foundation): add handoff/CURRENT_STATUS.md
 
-## What is verified from this shell
-- The local branch exists and is clean.
-- The local commits exist and are intact.
-- The remote is reachable by URL but authenticated git push/fetch/ls-remote are **not usable** from this shell.
-- Repeating the push check across several tool calls consistently returns:
-  `fatal: could not read Username for 'https://github.com': No such device or address`
+## What is verified locally
+- The branch exists and is checked out.
+- The working tree is clean and there is nothing staged.
+- The local commits exist and are intact in this workspace.
+- The task deliverable files that exist on this branch are the ones listed in `git ls-files`: ADR-0001..ADR-0006, `docs/adr/README.md`, `docs/adr/phase1-task-files-header.md`, the MISSION 01 record docs, the roadmap, current status, and the task files — and no application code, no package manager files, no lockfile, no provisioning, no deploy config.
+- The ADR register (`docs/adr/README.md`) has been corrected on this branch to match the actual tracked tree and the planned deliverable set.
 
 ## What is NOT verified from this shell
-- Whether the remote has or has not already received any of these commits.
+- Whether the remote `https://github.com/Mark56-mn/SYNERGY.git` has or has not received any of these commits.
 - Whether the authenticated push path has been restored elsewhere.
 
-I do not claim the push succeeded or failed authoritatively. I only report that I cannot verify the remote from here.
+The single remote reachability check run this turn returned:
+`fatal: could not read Username for 'https://github.com': No such device or address`
 
-## Why this is written as its own doc
-The Mission 01 instructions ask for final verification of branch, commit history, working tree, changed files and secret scan, plus a push through the authenticated route when it is available.
+No token, credential helper, hub config, or SSH agent was available in this shell. A direct API read to the repo refs endpoint with no token returned `HTTP_STATUS=401`.
 
-This doc is the verification record for everything I can do here locally. The push follow-through is recorded separately because it is blocked on the authenticated route, not on the content.
+I therefore do **not** claim the remote has or has not received these commits. I report the local state authoritatively and the remote state as unverified from this shell.
 
-## Intended final follow-through
-Once the authenticated push path is usable again in this workspace, the next step is:
-1. Run the remote verification:
-   - fetch the remote tracking ref for `chore/autonomous-foundation-v1`,
-   - confirm remote tip equals local HEAD `7b81378`.
-2. Confirm working tree is still clean.
-3. Run a secret scan over the committed docs and record the result.
-4. If remote tip does not match local HEAD, push through the authenticated route.
-5. Write the Mission 01 final report.
-6. Stop at G-1 and ask for owner approval before any scaffold.
+## Why this record was rewritten
+Earlier MISSION 01 verification records on this branch referred to older HEAD values and an older follow-through base. They no longer match the actual branch tip on this workspace. This document replaces the misleading record with the verified current state so a later agent does not act on stale numbers.
 
-## Current gating statement
-If the authenticated push path stays unavailable, I will present the Mission 01 final report with this verification note attached and ask the owner to push or re-auth, because I cannot complete the “verify push” part of the instruction from an unauthenticated shell.
-
-## Non-actions taken
-- No force push.
-- No merge into main.
-- No reset.
-- No overwrite of owner-authored files.
-- No scaffold, installs, provisioning, deployment.
-- No claim that this content has reached the remote from this shell.
-
-## End-of-document amendment
-This file is updated here to record the final local verification cycle for this turn:
-- local state confirmed clean at `7b81378`,
-- protected Mission 01 records present and intact,
-- no authorised remote write path available from this shell yet.
-
-If the authenticated push path becomes available later, the intended follow-through above applies exactly as written.
-
-## Explicit intended final sequence for when the authenticated route returns
-When the authenticated push path comes back in this workspace, I will execute this exact sequence:
-1. `git fetch --quiet origin chore/autonomous-foundation-v1`
-2. compare `FETCH_HEAD` to local HEAD `7b81378`
+## Intended final follow-through (executed only when the authenticated route is available)
+When the authenticated push path is usable again in this workspace, the next step is:
+1. fetch the remote tracking ref for `chore/autonomous-foundation-v1`
+2. compare remote tip to local HEAD `d9ee56ff00e357951a680662c33537270e98a559`
 3. if they match, record “remote already up to date”
-4. if they differ, run `git push origin chore/autonomous-foundation-v1:refs/heads/chore/autonomous-foundation-v1`
+4. if they differ, push `chore/autonomous-foundation-v1:refs/heads/chore/autonomous-foundation-v1`
 5. re-confirm working tree clean
-6. run a secret scan on committed docs
+6. run a secret scan over the committed docs and record the result
 7. write the Mission 01 final report
 8. stop at G-1 for owner approval before any scaffold
 
-This explicit sequence is recorded here so the final follow-through is not re-derived from memory later.
+## Current gating statement
+If the authenticated push path stays unavailable, the Mission 01 final report is presented with this verification note attached, and the owner is asked to push or re-authenticate, because the “verify push” step cannot be completed authoritatively from an unauthenticated shell.
 
-## Amendment added in this turn
-Final amendment before stopping this verification cycle:
-- this record now ends at local commit `df4845c` on top of `7b81378`,
-- the underlying local state being recorded is still `7b81378` with the same clean tree and same committed Mission 01 docs,
-- the remote verification gap is unchanged,
-- no new content was invented, only the follow-through record was made explicit enough to survive context loss.
+## Non-actions taken this turn
+- No repeated push checks. Only one authoritative local verification and one single remote reachability observation.
+- No force push.
+- No merge into main.
+- No reset.
+- No overwrite of owner-authored documents.
+- No scaffold, installs, provisioning, deployment.
+- No claim that this content has reached the remote from this shell.

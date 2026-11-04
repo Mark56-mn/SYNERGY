@@ -4,7 +4,7 @@ Statuses: BACKLOG, READY, IN_PROGRESS, BLOCKED, REVIEW, DONE. Only tasks explici
 
 ## Phase 0 — repository and product foundation
 1. TASK-001: inspect repository and document current state (**DONE** — `docs/REPOSITORY_ASSESSMENT.md`, `handoff/TASK-001.md`).
-2. TASK-002: propose architecture and technology implementation plan (**READY** — `task/TASK-002-architecture-and-technology-plan.md`; dependency TASK-001 satisfied). Human review of its output is required before TASK-003.
+2. TASK-002: propose architecture and technology implementation plan (**DONE as documents, awaiting G-1 approval** — `task/TASK-002-architecture-and-technology-plan.md`, `handoff/TASK-002.md`; deliverables in `docs/adr/` and `task/`). Human review of its output is required before TASK-003.
 3. TASK-003: define app/package scaffold and developer workflow (**BLOCKED** on TASK-002 approval).
 4. TASK-004: implement design tokens and responsive application shell (**BLOCKED** on scaffold).
 5. TASK-005: establish test, lint, typecheck and build gates (**BLOCKED** on scaffold).
@@ -37,4 +37,4 @@ Do not reorder around convenience. Update dependencies and reasons when evidence
 - **G-5** No CI platform (including GitHub Actions) without approval.
 
 ## Change log
-- 2026-11-04 — TASK-001 marked DONE after assessment; TASK-002 moved to READY. Phase structure unchanged.
+- 2026-11-04 — TASK-001 marked DONE after assessment; TASK-002 documents completed locally and stopped at G-1 for owner approval. Phase structure unchanged.
