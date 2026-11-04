@@ -54,3 +54,11 @@ If the authenticated push path stays unavailable, I will present the Mission 01 
 - No overwrite of owner-authored files.
 - No scaffold, installs, provisioning, deployment.
 - No claim that this content has reached the remote from this shell.
+
+## End-of-document amendment
+This file is updated here to record the final local verification cycle for this turn:
+- local state confirmed clean at `7b81378`,
+- protected Mission 01 records present and intact,
+- no authorised remote write path available from this shell yet.
+
+If the authenticated push path becomes available later, the intended follow-through above applies exactly as written.
