@@ -196,7 +196,7 @@ TASK-002 is **planning-only**. `ROADMAP.md` requires human approval of its outpu
 ## 12. Commit
 
 ```
-commit: <recorded in the follow-up status commit; see `git log --oneline -1 -- handoff/TASK-001.md`>
+commit: 4ecad1ecf18a44fd4ade4fd3b652e9bbad678b90 (docs(assessment): complete TASK-001 repository assessment)
 author: Codebuff (SYNERGY agent) <noreply@codebuff.com>   (repo-local identity; the repository had none configured)
 message: docs(assessment): complete TASK-001 repository assessment
 ```
