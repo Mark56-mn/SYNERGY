@@ -75,3 +75,10 @@ When the authenticated push path comes back in this workspace, I will execute th
 8. stop at G-1 for owner approval before any scaffold
 
 This explicit sequence is recorded here so the final follow-through is not re-derived from memory later.
+
+## Amendment added in this turn
+Final amendment before stopping this verification cycle:
+- this record now ends at local commit `df4845c` on top of `7b81378`,
+- the underlying local state being recorded is still `7b81378` with the same clean tree and same committed Mission 01 docs,
+- the remote verification gap is unchanged,
+- no new content was invented, only the follow-through record was made explicit enough to survive context loss.
