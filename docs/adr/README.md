@@ -17,6 +17,7 @@ This register records material architecture choices so later agents and reviewer
 | ADR-0009 | Threat model and data classification for the identity/profile slice | RECOMMENDED | Assets, actors, trust boundaries, top threats (account takeover, IDOR/BOLA, private-profile leakage, enumeration), and the named negative tests. |
 | ADR-0010 | Cost and infrastructure proposal for Phase 0/Phase 1 | RECOMMENDED | Free-tier limits, what triggers paid usage, cheapest viable option per category; presented for approval, nothing purchased. |
 | ADR-0011 | Phase 1 task breakdown and task-file specs | RECOMMENDED | Roadmap items 6–13 split into implementation-sized tasks with goal, non-goals, acceptance criteria, affected areas, risks, test plan and dependencies; task files created where a task is READY. |
+| ADR-0012 | Android application foundation (Expo) and its relation to the PWA-first path | ACCEPTED EXECUTING PATH (owner-authorised via MISSION 02) | Selected Expo + React Native + Expo Router as the Android foundation; the app shares the web's backend, identity authority and shared packages; the website stays first. |
 
 Plus one reference document, not a decision:
 - `docs/adr/0000-system-context-container-module-diagram-and-data-lifecycle.md` — system context, container/module diagram, trust boundaries, auth/session flow, media upload flow, deployment topology, data lifecycle, and an illustrative initial profiles/identity data model, with assumptions labelled.
@@ -37,4 +38,4 @@ For every ADR: context, options considered, decision, consequences, security/cos
 
 **How to read these:** each decision below is labelled RECOMMENDED. That means: this is the default this plan proposes, it is coherent with the approved blueprint/MVP/architecture/security documents, and it should guide planning — but it must not become an irreversible product rule without human approval. If you disagree with any of them, the correct next action is to record that disagreement as an open item and request a decision; do not silently substitute another implementation.
 
-Counts as of this register: ADR-0001 through ADR-0011, each appearing once; plus one reference document, `docs/adr/0000-system-context-container-module-diagram-and-data-lifecycle.md`, which is not an ADR.
+Counts as of this register: ADR-0001 through ADR-0011, each appearing once; plus one reference document, `docs/adr/0000-system-context-container-module-diagram-and-data-lifecycle.md`, and two scaffold-task records (ADR-0012, ADR-0013) created during the owner-authorised TASK-003 mission.
