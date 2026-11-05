@@ -1,68 +1,46 @@
 # MISSION 01 — remote verification and push follow-through
 
-Recorded: 2026-11-04
+Recorded: 2026-11-05
 
-## Local state on this workspace (verified this turn)
-- Branch: `chore/autonomous-foundation-v1`
-- Local HEAD: `d9ee56ff00e357951a680662c33537270e98a559`
-- Working tree: clean (0 changed files; 0 unstaged; nothing cached)
-- Tracked files on this branch: 33
-- Recent commits on this branch (local, newest first):
-  - `d9ee56f` docs: amend MISSION 01 remote verification record with final turn note
-  - `df4845c` docs: record MISSION 01 final follow-through plan explicitly
-  - `3fc9daa` docs: amend MISSION 01 remote verification record for final cycle
-  - `564e005` docs: record MISSION 01 remote verification and push follow-through
-  - `7b81378` docs: record MISSION 01 push-verification outcome
-  - `01239fc` docs: record push authorisation loss during MISSION 01 verification
-  - `12503eb` docs: vendor, authorization and environment verification before TASK-002
-  - `c087372` docs: record MISSION 01 owner authorisation and D-01 decision
-  - `f324354` docs: add ROADMAP.md for MISSION 01 (foundation tasks, gates, status)
-  - `a0d414e` TASK-002: write architecture and technology plan (planning-only, RECOMMENDED)
-  - `f43e3d2` docs(handoff): record TASK-001 commit SHA
-  - `4ecad1e` docs(assessment): complete TASK-001 repository assessment
-  - `d48a772` chore(foundation): add handoff/README.md
-  - `0ea66db` chore(foundation): add handoff/CURRENT_STATUS.md
+## Mission 01 outcome on this workspace
+Mission 01’s objective was to complete the SYNERGY foundation deliverables that had been blocked by the lost auth state and the stale push record, to verify them, and to get them onto the remote `chore/autonomous-foundation-v1` branch without rewriting or discarding any owner-authored remote commit.
 
-## What is verified locally
-- The branch exists and is checked out.
-- The working tree is clean and there is nothing staged.
-- The local commits exist and are intact in this workspace.
-- The task deliverable files that exist on this branch are the ones listed in `git ls-files`: ADR-0001..ADR-0006, `docs/adr/README.md`, `docs/adr/phase1-task-files-header.md`, the MISSION 01 record docs, the roadmap, current status, and the task files — and no application code, no package manager files, no lockfile, no provisioning, no deploy config.
-- The ADR register (`docs/adr/README.md`) has been corrected on this branch to match the actual tracked tree and the planned deliverable set.
+Outcome: complete and published.
 
-## What is NOT verified from this shell
-- Whether the remote `https://github.com/Mark56-mn/SYNERGY.git` has or has not received any of these commits.
-- Whether the authenticated push path has been restored elsewhere.
+- Local branch: `chore/autonomous-foundation-v1`
+- Local final HEAD after this mission: `e3b5c6cd28c9f5e2933ece998a0a9c8f7d89b099`
+- Remote final HEAD after this mission, verified through the authenticated route: `e3b5c6cd28c9f5e2933ece998a0a9c8f7d89b099`
+- Result: remote tip matches local HEAD.
 
-The single remote reachability check run this turn returned:
-`fatal: could not read Username for 'https://github.com': No such device or address`
+## What this mission completed
+- Restored the authenticated GitHub route and re-verified the real remote branch tip: `f32435497f4da9718f7353ad9a6bf09401715e2b` (`f324354` `docs: add ROADMAP.md for MISSION 01 (foundation tasks, gates, status)`), not the stale number `07e7c30` that was assumed earlier.
+- Completed TASK-002’s remaining architecture deliverables locally: ADR-0006..ADR-0011, the system context/diagram/data-lifecycle reference doc, the Phase 1 task breakdown, and the 14 Phase 1 task files.
+- Reconciled stale artifacts so the remote deliverable set matches the real plan: folded `docs/adr/phase1-task-files-header.md` into `docs/adr/README.md`, marked `docs/adr/0006-system-context-and-container-module-diagram.md` as superseded by `docs/adr/0000-system-context-container-module-diagram-and-data-lifecycle.md`, and replaced `task/TASK-002-architecture-and-technology-plan.md` with `handoff/TASK-002.md`.
+- Updated `ROADMAP.md`, `handoff/CURRENT_STATUS.md`, and `handoff/TASK-002.md` so they match the reconciled deliverable set.
+- Added a ready-to-paste `docs/MISSION_02_INSTRUCTION_READY.md`.
 
-No token, credential helper, hub config, or SSH agent was available in this shell. A direct API read to the repo refs endpoint with no token returned `HTTP_STATUS=401`.
+## Push sequence on this mission
+- Push 1 (authenticated): `f324354..517a3ce` -> `chore/autonomous-foundation-v1`
+- Push 2 (authenticated): `517a3ce..e3b5c6c` -> `chore/autonomous-foundation-v1`
+- Both were fast-forward pushes onto the existing remote branch. No force-push, no reset, no history rewrite.
 
-I therefore do **not** claim the remote has or has not received these commits. I report the local state authoritatively and the remote state as unverified from this shell.
+## Verified post-push state on GitHub
+- Remote branch HEAD: `e3b5c6cd28c9f5e2933ece998a0a9c8f7d89b099`
+- Remote tree contains the reconciled ADR set (ADR-0001..ADR-0011, plus the 0000 reference doc and the phase-1 breakdown), the 14 Phase 1 task files, the roadmap, current status, TASK-002 handoff, MISSION 01 record, and MISSION 02 instruction.
+- Remote tree does not contain the superseded artifacts removed in `e3b5c6c`.
+- CONFIRMED documents and the real ADR-0002 are untouched.
+- Secret scan over the remote tree: no real credential-shaped value found.
 
-## Why this record was rewritten
-Earlier MISSION 01 verification records on this branch referred to older HEAD values and an older follow-through base. They no longer match the actual branch tip on this workspace. This document replaces the misleading record with the verified current state so a later agent does not act on stale numbers.
+## What this mission did NOT do (and must not be claimed as done)
+- It did not scaffold the app, create `package.json`/lockfiles, install dependencies, provision Neon/Supabase/Cloudinary, configure secrets, deploy, or merge into main.
+- It did not resolve open product decisions. RECOMMENDED items remain RECOMMENDED.
+- The owner has not yet approved the architecture/technology plan output. G-1 is still open.
 
-## Intended final follow-through (executed only when the authenticated route is available)
-When the authenticated push path is usable again in this workspace, the next step is:
-1. fetch the remote tracking ref for `chore/autonomous-foundation-v1`
-2. compare remote tip to local HEAD `d9ee56ff00e357951a680662c33537270e98a559`
-3. if they match, record “remote already up to date”
-4. if they differ, push `chore/autonomous-foundation-v1:refs/heads/chore/autonomous-foundation-v1`
-5. re-confirm working tree clean
-6. run a secret scan over the committed docs and record the result
-7. write the Mission 01 final report
-8. stop at G-1 for owner approval before any scaffold
+## Gating
+Stop at G-1. Do not start TASK-003 or any implementation until the owner approves the architecture/technology plan output. The ready-to-execute next step is `docs/MISSION_02_INSTRUCTION_READY.md`.
 
-## Current gating statement
-If the authenticated push path stays unavailable, the Mission 01 final report is presented with this verification note attached, and the owner is asked to push or re-authenticate, because the “verify push” step cannot be completed authoritatively from an unauthenticated shell.
-
-## Non-actions taken this turn
-- No repeated push checks. Only one authoritative local verification and one single remote reachability observation.
-- No force push.
-- No merge into main.
-- No reset.
-- No overwrite of owner-authored documents.
-- No scaffold, installs, provisioning, deployment.
-- No claim that this content has reached the remote from this shell.
+## Non-actions taken this mission
+- No repeated push checks. One authenticated fetch to establish the real remote tip, two authenticated pushes, and one authenticated verification fetch.
+- No force push, no reset, no history rewrite, no discard of owner-authored remote commits.
+- No scaffold, install, provisioning, deployment, or merge into main.
+- No claim that any content reached the remote before it was verified through the authenticated route.
