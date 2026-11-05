@@ -33,3 +33,5 @@ Register reconciliation note (Mission 01 recovery):
 For every ADR: context, options considered, decision, consequences, security/cost impact, and open dependencies. An ADR becomes CONFIRMED only after the owner approves it; material changes during implementation require a new ADR or a superseding entry.
 
 **How to read these:** each decision below is labelled RECOMMENDED. That means: this is the default this plan proposes, it is coherent with the approved blueprint/MVP/architecture/security documents, and it should guide planning — but it must not become an irreversible product rule without human approval. If you disagree with any of them, the correct next action is to record that disagreement as an open item and request a decision; do not silently substitute another implementation.
+
+Counts as of this register: ADR-0001 through ADR-0011, each appearing once; plus one reference document, `docs/adr/0000-system-context-container-module-diagram-and-data-lifecycle.md`, which is not an ADR.
