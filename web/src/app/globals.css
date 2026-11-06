@@ -1,0 +1,66 @@
+@import "@synergy/design-tokens/tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply bg-bg text-ink;
+    font-family: var(--font-sans);
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-bg text-ink;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Visible keyboard focus everywhere (mint ring on its darker surfaces). */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  ::selection {
+    background: var(--color-primary);
+    color: var(--color-bg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Shared page container: mobile-first, comfortable on 320-360px screens. */
+  .page-container {
+    @apply mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Skip link for keyboard users. */
+  .skip-link {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, -200%);
+    top: 0;
+    z-index: 50;
+    background: var(--color-primary);
+    color: var(--color-bg);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+  }
+  .skip-link:focus {
+    transform: translate(-50%, var(--space-md));
+  }
+}
