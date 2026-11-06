@@ -7,6 +7,7 @@ SYSTEM_ARCHITECTURE.md
 DESIGN_SYSTEM.md
 SECURITY_RULES.md
 QUALITY_GATES.md
+ROADMAP.md
 LICENSE
 
 # Planning records (tasks, handoffs, ADRs) are review artifacts, not code.

@@ -1,71 +1,62 @@
 # SYNERGY — Current Development Status
 
-Last updated: 2026-11-04 — TASK-001 complete; TASK-002 documents complete, awaiting G-1 approval
-TASK-001 commit: `4ecad1ecf18a44fd4ade4fd3b652e9bbad678b90`
-TASK-002 local HEAD: `d9ee56ff00e357951a680662c33537270e98a559` (documents only; no scaffold, no installs, no provisioning)
+Last updated: 2026-11-06 — TASK-003 (application foundation) complete on `chore/autonomous-foundation-v1`
+Branch: `chore/autonomous-foundation-v1` (not merged into `main`)
+Foundation commits: `6933820` (root tooling, shared packages, db boundary), `388d3fe` (web + tests), `3657c60` (android); documentation commit follows them on the same branch.
+TASK-003 handoff: `handoff/TASK-003.md`
 
 ## Repository
 - Repository: Mark56-mn/SYNERGY
-- Default branch: main (`83cc6d3` — "Initial commit")
-- Foundation branch: `chore/autonomous-foundation-v1` (owner-authored foundation commits plus TASK-002 planning commits; this branch is not merged into main)
-- Current stage: foundation — repository assessed; architecture and technology plan written as documents; scaffold not started
-- Product implementation: **none** (verified, not assumed)
+- Default branch: `main` (`83cc6d3` — "Initial commit"); untouched, nothing merged.
+- Current stage: **foundation exists and runs** — monorepo with a Next.js web app, shared domain/design-token packages, an Expo Android foundation, a server-side security boundary, and local quality gates.
+- Product implementation: shell + contracts + security plumbing only. No feed, listings, bookings, moderation, messaging UI, payments or deployment.
 
 ## Source of truth
-Read `AGENTS.md`, `MASTER_BLUEPRINT.md`, `DECISION_REGISTER.md`, `MVP_SCOPE.md`, `SYSTEM_ARCHITECTURE.md`, `DESIGN_SYSTEM.md`, `SECURITY_RULES.md`, `QUALITY_GATES.md` and `ROADMAP.md`.
+Read `AGENTS.md`, `MASTER_BLUEPRINT.md`, `DECISION_REGISTER.md`, `MVP_SCOPE.md`, `SYSTEM_ARCHITECTURE.md`, `DESIGN_SYSTEM.md`, `SECURITY_RULES.md`, `QUALITY_GATES.md`, `ROADMAP.md`. D-01 stands: the 27-section blueprint in `docs/SYNERGY_MASTER_PRODUCT_BLUEPRINT_v1.0.md` is normative, `MASTER_BLUEPRINT.md` is the summary, `DECISION_REGISTER.md` remains authoritative for individual decision status.
 
-Full-length product blueprint supplied by the owner is preserved at `docs/SYNERGY_MASTER_PRODUCT_BLUEPRINT_v1.0.md`. It is consistent with `MASTER_BLUEPRINT.md` on every CONFIRMED decision and adds confirmed detail the summary omits (ad frequency defaults, tradeoff/decoy rules for ads, creator-pool deductions, voting eligibility proposals, subscription tiers, deferral of live streaming). **Precedence between the two was resolved for planning in this mission: D-01 was approved so the full 27-section blueprint is the normative product specification, `MASTER_BLUEPRINT.md` is the summary/navigation doc, and `DECISION_REGISTER.md` remains authoritative for individual decision status.** Neither source-of-truth document was modified.
+## Current task state
+- TASK-001 — Repository Assessment — **DONE** (`handoff/TASK-001.md`).
+- TASK-002 — Architecture and technology plan — **DONE as documents** (approved at G-1 for the foundation phase by MISSION 02).
+- TASK-003 — Application foundation — **DONE** (`task/TASK-003-application-foundation.md`, `handoff/TASK-003.md`).
+- TASK-004 — Design tokens and responsive application shell — **NOT STARTED** (awaiting authorisation).
 
-## Current task
-TASK-001 — Repository Assessment — **DONE** (`handoff/TASK-001.md`, `docs/REPOSITORY_ASSESSMENT.md`).
+## What exists now
+- `web/` — Next.js 15 App Router, React 19, TypeScript strict, Tailwind 3.4, App-Router route handlers under `/api/v1`.
+- `web/src/server/` — server-only: env validation, session model + `SessionSource`, deny-by-default authorisation, uniform JSON route wrapper, redacting logger, rate limiter.
+- `web/src/modules/` — inventory, listing, community, booking, messaging services (ownership-checked persistence).
+- `packages/domain` — Zod/TS contracts (media caps, booking states, pre-hire message cap).
+- `packages/design-tokens` — navy/mint token source.
+- `db/` — drizzle-kit boundary; **no migrations yet** (identity slice owns the first).
+- `android/` — Expo SDK 57 + Expo Router five-tab foundation, monorepo-aware Metro config.
+- Gates: Prettier, ESLint, TypeScript, Vitest (40 tests), Next build, Android typecheck + Metro export, secret scan, import-boundary check, `npm audit`.
 
-TASK-002 — Architecture and technology implementation plan — **DONE as documents, awaiting G-1 approval** (`task/TASK-002-architecture-and-technology-plan.md`, `handoff/TASK-002.md`).
+## Verified gate results (final tree)
+`npm install` 0 · `npm run format:check` 0 · `npm run lint` 0 (0 warnings) · `npm run typecheck` 0 · `npm test` 0 (6 files / 40 tests) · `npm run build` 0 (7 routes) · `npm run android:typecheck` 0 · `npx expo export --platform android` 0 (2.7 MB Hermes bundle) · `npm run secret-scan` 0 (57 files) · `npm run check:boundaries` 0 (22 files).
+Not passing: `npm run db:generate` exit 1 (no schema files yet — by design), `npm audit` exit 1 (21 affected packages in 7 advisory families, all documented in `handoff/TASK-003.md` §8).
 
-## TASK-002 deliverables completed locally
-- ADR register index: `docs/adr/README.md`.
-- ADR-0001 to ADR-0005 (existing RECOMMENDED proposals) plus:
-  - ADR-0006 repository layout and import boundaries (`docs/adr/0006-repository-layout-and-import-boundaries.md`)
-  - ADR-0007 environment variable schema and secret handling (`docs/adr/0007-environment-variable-schema-and-secret-handling.md`)
-  - ADR-0008 quality tooling plan (`docs/adr/0008-quality-tooling-plan.md`)
-  - ADR-0009 threat model and data classification for the identity/profile slice (`docs/adr/0009-identity-and-profile-threat-model-and-data-classification.md`)
-  - ADR-0010 cost and infrastructure proposal (`docs/adr/0010-cost-and-infrastructure-proposal.md`)
-  - ADR-0011 SOAP architecture note (`docs/adr/0011-soap-architecture-note.md`)
-- Reference doc: `docs/adr/0000-system-context-container-module-diagram-and-data-lifecycle.md`.
-- Phase 1 task breakdown: `docs/adr/phase-1-task-breakdown.md`.
-- Phase 1 task files (READY in form): `task/TASK-006A.md`, `task/TASK-006B.md`, `task/TASK-007A.md`, `task/TASK-007B.md`, `task/TASK-008.md`, `task/TASK-009A.md`, `task/TASK-009B.md`, `task/TASK-010A.md`, `task/TASK-010B.md`, `task/TASK-011A.md`, `task/TASK-011B.md`, `task/TASK-012.md`, `task/TASK-013A.md`, `task/TASK-013B.md`.
-
-## Verified state of the repository
-- Tracked files before TASK-001: 14, **all documentation** (plus `LICENSE`, a one-line `README.md`).
-- After TASK-002: only documentation added; still no framework, package manager, lockfile, source file, test, linter config, migration, CI or deployment configuration.
-- No `.gitignore`, no `.env.example` yet — **P0 hygiene gap**, to be closed with the scaffold (risk R-02).
-- No secrets present; secret scan clean this turn (conservative grep over tracked text files found only descriptive hex strings and ordinary prose such as "connection string"; no real credential-shaped value).
-- No Neon / Supabase / Cloudinary project exists; nothing is provisioned.
+## Security posture
+Authentication is resolved server-side from the request; no route or service trusts a browser-supplied user ID. Ownership, role and cross-user isolation checks are deny-by-default and covered by tests using clearly labelled test doubles. **Identity is not live:** `SupabaseSessionSource.verify()` returns `null` until G-2 provisioning and TASK-006A, and no test claims production-grade security.
 
 ## Important constraints
 - Ibadan-first; dark navy + mint.
-- Keep CONFIRMED / RECOMMENDED / UNRESOLVED distinctions; never promote a recommendation to confirmed without human approval.
-- No real payments, paid infrastructure provisioning or public deployment without human approval.
-- No GitHub Actions unless explicitly approved — quality gates run locally and record exact commands, exit statuses and results.
-- Preserve existing files and work; assess before implementation. Never overwrite owner-authored documents.
-- After every task, update this file and create a task-specific handoff.
+- Keep CONFIRMED / RECOMMENDED / UNRESOLVED distinctions; never promote a recommendation without human approval.
+- No payments, paid infrastructure, live credentials or public deployment without approval.
+- No CI platform (G-5). Gates run locally with recorded commands and exit codes.
+- Owner-authored source-of-truth docs and planning records are excluded from auto-formatting and must never be rewritten by agents.
 
 ## Blockers requiring human action
 | Blocker | Needed |
 |---|---|
-| B-1 Owner decision on blueprint precedence (D-01) | **Resolved for planning**: full blueprint normative; summary is `MASTER_BLUEPRINT.md`; decision register authoritative for individual decisions. Still RECOMMENDED-only for any irreversible product rule not yet individually approved. |
-| B-2 Approval of TASK-002 output (stack, Android path, authorisation model, env/secrets, quality tooling, threat model, costs, SOAP note, phase-1 breakdown) | Review and approve before scaffold |
-| B-3 Provisioning for the identity/data slice | Create free-tier **Neon** + **Supabase** + **Cloudinary** development projects yourself and add credentials as environment secrets (never paste keys into chat or repository files) |
-| B-4 CI provider (D-06) | Decide whether automated gates are wanted; currently prohibited without approval |
+| B-3 Provisioning for the identity/data slice | Owner creates free-tier Neon + Supabase + Cloudinary development projects and supplies credentials as environment secrets (never in files or chat). |
+| B-4 CI provider (D-06) | Decide whether automated gates are adopted; currently locally run only. |
+| B-5 Dependency triage | Decide on Vitest 5 / Expo SDK 58 upgrades and whether transitive overrides are acceptable (details and tested recipe in `handoff/TASK-003.md` §8). |
+| B-6 TASK-004 authorisation | Confirm the next task may start. |
 
 ## Environment note for future agents
-In this workspace the clone may contain only `main`. `git ls-remote` and `git fetch origin <branch>` cannot authenticate here; use the authenticated fetch path before concluding that a branch or file is missing — TASK-001 records the incident and the recovery (`handoff/TASK-001.md` §8).
-
-## Latest completed tasks
-- TASK-001 — repository assessed.
-- TASK-002 — architecture and technology plan written as documents; stops at G-1.
+Remote operations must use the authenticated GitHub route (the `cloud_git` tool route), not shell `git fetch`/`push`, which cannot authenticate here. TASK-001 records the original incident.
 
 ## Remote verification state
-From this shell, the authenticated remote path was **not usable** this turn (`fatal: could not read Username for 'https://github.com': No such device or address`). Local state is reported authoritatively; remote state is reported as unverified from this shell. See `docs/MISSION_01_REMOTE_VERIFICATION_AND_PUSH.md`.
+TASK-003 code commits and this handoff are pushed to `chore/autonomous-foundation-v1`; the exact remote-tip SHA and the confirmation that it matches local HEAD are recorded in the final TASK-003 delivery report and can be re-checked with `git log origin/chore/autonomous-foundation-v1 -1` after an authenticated fetch.
 
 ## Next action
-An agent with workspace access should obtain owner approval of the TASK-002 output (G-1), then scaffold the repository per TASK-003 using the layout in ADR-0006 and the env/secrets and quality-tooling plans in ADR-0007/ADR-0008, then begin phase-1 implementation tasks whose dependencies are met — starting with the identity/auth foundation task(s).
+Owner: approve TASK-004 (design tokens + responsive shell, web-first) and triage the audit items. Agent after approval: implement TASK-004 against the existing scaffold, keep Android foundation-only, and keep every gate green.

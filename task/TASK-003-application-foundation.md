@@ -1,6 +1,6 @@
 # TASK-003 — Application foundation
 
-Status: IN_PROGRESS (owner-authorised via MISSION 02; supersedes the ROADMAP "BLOCKED on TASK-002 approval" status because the owner approved G-1 for the application-foundation phase).
+Status: DONE (owner-authorised via MISSION 02; supersedes the ROADMAP "BLOCKED on TASK-002 approval" status because the owner approved G-1 for the application-foundation phase). Gate evidence and limitations: `handoff/TASK-003.md`.
 Branch: `chore/autonomous-foundation-v1`
 Base: `3ce42e6897072c916e86e2bbeb333856c2813410`
 

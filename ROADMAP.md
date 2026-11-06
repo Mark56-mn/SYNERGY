@@ -5,9 +5,9 @@ Statuses: BACKLOG, READY, IN_PROGRESS, BLOCKED, REVIEW, DONE. Only tasks explici
 ## Phase 0 — repository and product foundation
 1. TASK-001: inspect repository and document current state (**DONE** — `docs/REPOSITORY_ASSESSMENT.md`, `handoff/TASK-001.md`).
 2. TASK-002: propose architecture and technology implementation plan (**DONE as documents, awaiting G-1 approval** — `task/TASK-002-architecture-and-technology-plan.md`, `handoff/TASK-002.md`; deliverables in `docs/adr/` and `task/`). Human review of its output is required before TASK-003.
-3. TASK-003: define app/package scaffold and developer workflow (**BLOCKED** on TASK-002 approval).
-4. TASK-004: implement design tokens and responsive application shell (**BLOCKED** on scaffold).
-5. TASK-005: establish test, lint, typecheck and build gates (**BLOCKED** on scaffold).
+3. TASK-003: application foundation — monorepo scaffold, shared contracts, web shell, server-side security boundary and Android foundation (**DONE** — `handoff/TASK-003.md`; 40 tests, web build and Android Metro export verified; `npm audit` findings documented).
+4. TASK-004: implement design tokens and responsive application shell (**READY in form, awaiting owner authorisation** — the scaffold and `packages/design-tokens` now exist).
+5. TASK-005: establish test, lint, typecheck and build gates (**PARTIALLY COMPLETE via TASK-003** — gates exist and run locally with recorded evidence; remains open until coverage is extended per `QUALITY_GATES.md`).
 
 ## Phase 1 — MVP product capabilities
 6. Identity and profile foundation.
@@ -38,3 +38,4 @@ Do not reorder around convenience. Update dependencies and reasons when evidence
 
 ## Change log
 - 2026-11-04 — TASK-001 marked DONE after assessment; TASK-002 documents completed locally and stopped at G-1 for owner approval. Phase structure unchanged.
+- 2026-11-06 — TASK-003 DONE on `chore/autonomous-foundation-v1`: monorepo scaffold (web, shared packages, db boundary, Android foundation), server-side security boundary, 40 passing tests, production web build and Android Metro export verified. Dependency audit findings documented, native Android build not run (no JDK/Android SDK), nothing deployed or merged, TASK-004 not started.
