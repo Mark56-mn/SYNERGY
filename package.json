@@ -27,18 +27,24 @@
     "check:boundaries": "node scripts/check-import-boundaries.mjs",
     "audit": "npm audit --audit-level=high",
     "android:start": "npm run start --workspace @synergy/android",
-    "android:typecheck": "npm run typecheck --workspace @synergy/android"
+    "android:typecheck": "npm run typecheck --workspace @synergy/android",
+    "verify": "node scripts/verify.mjs",
+    "check:responsive": "node scripts/check-responsive.mjs"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
     "@types/node": "^26.6.6",
+    "axe-core": "^4.14.0",
     "drizzle-kit": "^0.31.11",
     "jsdom": "^31.0.0",
     "next": "^15.5.29",
     "prettier": "^3.9.10",
     "typescript": "^5.9.0",
     "vitest": "^3.2.7"
+  },
+  "overrides": {
+    "postcss": "^8.5.32"
   }
 }
