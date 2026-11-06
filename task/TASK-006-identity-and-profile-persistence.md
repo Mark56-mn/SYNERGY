@@ -32,7 +32,7 @@ Do not begin either slice until the owner confirms G-2 provisioning and explicit
 Before implementation, the owner must create/approve the required free-tier development projects:
 1. Supabase project with Auth enabled and email authentication configured.
 2. Neon development database.
-3. Cloudinary development project if the owner intends the complete G-2 environment to be provisioned now; no media upload integration is part of this task.
+3. Cloudinary development project, as G-2 explicitly requires all three development projects; no media upload integration is part of this task.
 
 No agent may create accounts, incur costs, select paid tiers, or request secrets in chat. The owner should place credentials directly into the local/builder environment secret store using the exact variable names documented in the repository's `.env.example`. Verify names and configuration without printing secret values.
 
