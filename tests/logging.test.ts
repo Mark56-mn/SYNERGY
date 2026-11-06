@@ -6,7 +6,7 @@ describe("log redaction (SECURITY_RULES.md)", () => {
   it("secrets, tokens and credential-shaped keys are redacted to [redacted]", () => {
     const out = redact({
       password: "hunter2",
-      api_key: "AKIAIOSFODNN7EXAMPLE",
+      api_key: "placeholder-api-key-value",
       authorization: "Bearer abc.def.ghi",
       session_token: "tok_live_whatever",
       cloudinary_api_secret: "itsasecret",
