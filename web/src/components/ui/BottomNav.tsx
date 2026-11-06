@@ -3,79 +3,87 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { ComposeButton } from "@/components/shell/ComposeButton";
+import { Icon, type IconName } from "@/components/ui/Icon";
 import { cn } from "@/lib/cn";
 
 /**
- * Client navigation foundation for the product's candidate IA (Home, Services,
- * Create, Market, Profile). Labels/IA stay a RECOMMENDED pattern
- * (DESIGN_SYSTEM.md — validated by the product design task); screens they
- * point to are placeholders until their tasks are complete, and this
- * component is not yet mounted by the landing page for that reason.
- *
- * Accessibility: it is a real <nav> with a labelled <ul>, `aria-current` set
- * from the active path, and 44px minimum touch targets.
+ * Primary navigation. The DESIGN_SYSTEM.md IA (Home, Services, Create, Market,
+ * Profile) is a RECOMMENDED pattern pending product-design validation, so this
+ * build implements it as Home / Discover / Create / Communities / Profile:
+ * Services and Market live inside Discover until their own tasks exist, and the
+ * Android shell uses the same five destinations.
  */
-
-export interface NavItem {
+export const PRIMARY_NAV: Array<{
   href: string;
   label: string;
-  icon: string;
-  disabled?: boolean;
-}
-
-export const CANDIDATE_PRIMARY_NAV: NavItem[] = [
-  { href: "/home", label: "Home", icon: "🏠" },
-  { href: "/services", label: "Services", icon: "🧰" },
-  { href: "/create", label: "Create", icon: "➕" },
-  { href: "/market", label: "Market", icon: "🛒" },
-  { href: "/profile", label: "Profile", icon: "👤" },
+  icon: IconName;
+}> = [
+  { href: "/", label: "Home", icon: "home" },
+  { href: "/discover", label: "Discover", icon: "compass" },
+  { href: "/communities", label: "Communities", icon: "users" },
+  { href: "/u/amara.makes", label: "Profile", icon: "user" },
 ];
 
-export function BottomNav({
-  items = CANDIDATE_PRIMARY_NAV,
-  className,
-}: {
-  items?: NavItem[];
-  className?: string;
-}) {
+export function isActivePath(pathname: string, href: string): boolean {
+  if (href === "/") {
+    return pathname === "/";
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/** Mobile bottom bar: four destinations plus the central create action. */
+export function BottomNav() {
   const pathname = usePathname();
+  const [home, discover, communities, profile] = PRIMARY_NAV;
+
   return (
     <nav
       aria-label="Primary"
-      className={cn(
-        "safe-nav fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur",
-        className,
-      )}
+      className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur lg:hidden"
     >
-      <ul className="mx-auto flex max-w-5xl justify-around px-2 py-1 sm:py-2">
-        {items.map((item) => {
-          const active = pathname === item.href;
-          return (
-            <li key={item.href} className="min-w-[3.5rem] flex-1">
-              {item.disabled ? (
-                <span
-                  aria-disabled={true}
-                  className="flex flex-col items-center justify-center gap-0.5 rounded-md px-1 py-2 text-center text-[11px] text-ink-muted opacity-50"
-                >
-                  <span aria-hidden="true">{item.icon}</span>
-                  {item.label}
-                </span>
-              ) : (
-                <Link
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-md px-1 py-2 text-center text-[11px]",
-                    active ? "text-primary" : "text-ink-muted hover:text-ink",
-                  )}
-                >
-                  <span aria-hidden="true">{item.icon}</span>
-                  {item.label}
-                </Link>
+      <ul className="mx-auto grid max-w-lg grid-cols-5 items-end px-1 pt-1">
+        {[home!, discover!].map((item) => (
+          <li key={item.href}>
+            <Link
+              href={item.href}
+              aria-current={
+                isActivePath(pathname, item.href) ? "page" : undefined
+              }
+              className={cn(
+                "flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-md text-[11px] font-medium",
+                isActivePath(pathname, item.href)
+                  ? "text-primary"
+                  : "text-ink-muted hover:text-ink",
               )}
-            </li>
-          );
-        })}
+            >
+              <Icon name={item.icon} />
+              {item.label}
+            </Link>
+          </li>
+        ))}
+        <li className="flex justify-center">
+          <ComposeButton variant="fab" />
+        </li>
+        {[communities!, profile!].map((item) => (
+          <li key={item.href}>
+            <Link
+              href={item.href}
+              aria-current={
+                isActivePath(pathname, item.href) ? "page" : undefined
+              }
+              className={cn(
+                "flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-md text-[11px] font-medium",
+                isActivePath(pathname, item.href)
+                  ? "text-primary"
+                  : "text-ink-muted hover:text-ink",
+              )}
+            >
+              <Icon name={item.icon} />
+              {item.label}
+            </Link>
+          </li>
+        ))}
       </ul>
     </nav>
   );

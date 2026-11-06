@@ -63,4 +63,37 @@
   .skip-link:focus {
     transform: translate(-50%, var(--space-md));
   }
+
+  /* Bottom navigation respects the device safe area (no controls clipped). */
+  .safe-bottom {
+    padding-bottom: max(var(--space-sm), env(safe-area-inset-bottom));
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Horizontal rails (mobile category scrollers) without a visible bar. */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Abstract cover art for demonstration media: token-driven, no fake photos. */
+  .demo-cover {
+    background-image:
+      radial-gradient(
+        circle at 22% 18%,
+        color-mix(in srgb, var(--color-primary) 42%, transparent),
+        transparent 58%
+      ),
+      radial-gradient(
+        circle at 82% 76%,
+        color-mix(in srgb, var(--color-primary-hover) 26%, transparent),
+        transparent 62%
+      ),
+      linear-gradient(160deg, var(--color-surface-raised), var(--color-bg));
+  }
 }
