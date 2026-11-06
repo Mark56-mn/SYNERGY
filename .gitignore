@@ -1,0 +1,48 @@
+# Environment and secrets — never commit real values (.env.example is the tracked contract).
+.env
+.env.*
+!.env.example
+.dev.vars
+secrets/
+
+# Node / package managers
+node_modules/
+.npm/
+npm-debug.log*
+yarn-error.log*
+
+# Next.js build output
+web/.next/
+web/out/
+web/.next/cache/
+next-env.d.ts
+
+# Test / coverage
+coverage/
+.vitest/
+
+# Expo / Android tooling
+android/.expo/
+android/.expo-shared/
+android/.expo-export-check/
+android/build/
+android/.gradle/
+android/android/app/build/
+android/android/build/
+*.keystore
+!debug.keystore
+
+# Drizzle / database local output
+db/migrations/*.bak
+db/migrations/meta/*.bak
+
+# Logs and OS noise
+logs/
+*.log
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json

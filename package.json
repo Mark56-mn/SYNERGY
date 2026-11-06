@@ -1,0 +1,40 @@
+{
+  "name": "synergy",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SYNERGY monorepo: web (Next.js), shared domain/design-tokens packages, and the Android foundation (Expo).",
+  "workspaces": [
+    "packages/*",
+    "web",
+    "android"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @synergy/web",
+    "build": "npm run build --workspace @synergy/web",
+    "build:web": "npm run build --workspace @synergy/web",
+    "start": "npm run start --workspace @synergy/web",
+    "lint": "npm run lint --workspace @synergy/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "drizzle-kit generate --config=db/drizzle.config.ts",
+    "db:migrate": "drizzle-kit migrate --config=db/drizzle.config.ts",
+    "secret-scan": "node scripts/secret-scan.mjs",
+    "check:boundaries": "node scripts/check-import-boundaries.mjs",
+    "audit": "npm audit --audit-level=high",
+    "android:start": "npm run start --workspace @synergy/android",
+    "android:typecheck": "npm run typecheck --workspace @synergy/android"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "drizzle-kit": "^0.31.11",
+    "next": "^15.5.29",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.7"
+  }
+}

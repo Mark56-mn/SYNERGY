@@ -1,0 +1,14 @@
+{
+  "name": "@synergy/design-tokens",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Shared SYNERGY design tokens (DESIGN_SYSTEM.md starter values) as TypeScript constants and CSS custom properties — one source for web and Android.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./tokens.css": "./tokens.css"
+  }
+}

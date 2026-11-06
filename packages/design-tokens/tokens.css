@@ -1,0 +1,29 @@
+/*
+ * SYNERGY design tokens (CSS custom properties), kept exactly in sync with
+ * src/index.ts and DESIGN_SYSTEM.md's starter values. The web app imports
+ * this file; Android consumes src/index.ts. Never edit one without the other.
+ */
+:root {
+  --color-bg: #0b1220;
+  --color-surface: #111c2e;
+  --color-surface-raised: #17243a;
+  --color-border: #26364d;
+  --color-text: #f4f7fa;
+  --color-text-muted: #a9b7c8;
+  --color-primary: #63e6be;
+  --color-primary-hover: #43d6a9;
+  --color-danger: #f07178;
+  --color-warning: #f4c66a;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+}

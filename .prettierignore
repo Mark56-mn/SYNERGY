@@ -1,0 +1,22 @@
+# Owner-authored source-of-truth documents: never auto-reformatted by agents.
+AGENTS.md
+MASTER_BLUEPRINT.md
+DECISION_REGISTER.md
+MVP_SCOPE.md
+SYSTEM_ARCHITECTURE.md
+DESIGN_SYSTEM.md
+SECURITY_RULES.md
+QUALITY_GATES.md
+LICENSE
+
+# Planning records (tasks, handoffs, ADRs) are review artifacts, not code.
+docs/**
+task/**
+handoff/**
+
+# Generated / vendor output.
+node_modules/**
+.next/**
+.expo/**
+android/.expo-export-check/**
+package-lock.json
