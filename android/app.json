@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "SYNERGY",
+    "slug": "synergy",
+    "version": "0.1.0",
+    "scheme": "synergy",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B1220",
+    "platforms": ["android"],
+    "android": {
+      "package": "com.synergy.app",
+      "edgeToEdgeEnabled": true
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#0B1220"
+    },
+    "extra": {
+      "publicApiBaseUrl": ""
+    }
+  }
+}
