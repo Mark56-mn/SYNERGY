@@ -1,6 +1,6 @@
 # SYNERGY — Current Development Status
 
-Last updated: 2026-11-06 — TASK-005 (quality, accessibility and security gates) complete on `chore/autonomous-foundation-v1`
+Last updated: 2026-11-06 — TASK-006 planning prepared; identity implementation blocked on G-2
 Branch: `chore/autonomous-foundation-v1` (not merged into `main`)
 Foundation commits: `6933820` (root tooling, shared packages, db boundary), `388d3fe` (web + tests), `3657c60` (android); documentation commit follows them on the same branch.
 TASK-003 handoff: `handoff/TASK-003.md`
@@ -21,6 +21,7 @@ TASK-005 handoff: `handoff/TASK-005.md`
 Read `AGENTS.md`, `MASTER_BLUEPRINT.md`, `DECISION_REGISTER.md`, `MVP_SCOPE.md`, `SYSTEM_ARCHITECTURE.md`, `DESIGN_SYSTEM.md`, `SECURITY_RULES.md`, `QUALITY_GATES.md`, `ROADMAP.md`. D-01 stands: the 27-section blueprint in `docs/SYNERGY_MASTER_PRODUCT_BLUEPRINT_v1.0.md` is normative, `MASTER_BLUEPRINT.md` is the summary, `DECISION_REGISTER.md` remains authoritative for individual decision status.
 
 ## Current task state
+- TASK-006 — Identity and profile persistence — **BLOCKED / planning prepared** (`task/TASK-006-identity-and-profile-persistence.md`, `handoff/TASK-006.md`); no implementation started. TASK-006A identity integration requires G-2 and explicit owner release; TASK-006B profile persistence depends on TASK-006A review.
 - TASK-001 — Repository Assessment — **DONE** (`handoff/TASK-001.md`).
 - TASK-002 — Architecture and technology plan — **DONE as documents** (approved at G-1 for the foundation phase by MISSION 02).
 - TASK-003 — Application foundation — **DONE** (`task/TASK-003-application-foundation.md`, `handoff/TASK-003.md`).
@@ -69,4 +70,4 @@ Remote operations must use the authenticated GitHub route (the `cloud_git` tool 
 TASK-003 code commits and this handoff are pushed to `chore/autonomous-foundation-v1`; the exact remote-tip SHA and the confirmation that it matches local HEAD are recorded in the final TASK-003 delivery report and can be re-checked with `git log origin/chore/autonomous-foundation-v1 -1` after an authenticated fetch.
 
 ## Next action
-Owner: authorise the identity/profile persistence slice and complete B-3 provisioning; triage B-5 (dependency majors). Agent: do not start identity or schema work until authorised. When it starts, wire real sessions into the existing server boundary, replace demo profiles with persisted records, and treat the TASK-005 gates (`npm run verify`, axe suite, responsive gate) as the definition of done.
+Owner: complete G-2 provisioning and explicitly authorise TASK-006A. TASK-006 is planned in `task/TASK-006-identity-and-profile-persistence.md`; the implementation handoff is `handoff/TASK-006.md`. Agent: do not start identity or schema work until G-2 is evidenced and TASK-006A is released. TASK-006B follows only after TASK-006A review. B-5 dependency-major triage remains separate.
