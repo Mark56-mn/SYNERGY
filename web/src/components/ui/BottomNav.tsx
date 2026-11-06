@@ -38,8 +38,10 @@ export function BottomNav() {
   const [home, discover, communities, profile] = PRIMARY_NAV;
 
   return (
+    // Distinct from the desktop nav label so the two landmarks are never
+    // announced with the same name (axe landmark-unique).
     <nav
-      aria-label="Primary"
+      aria-label="Primary (mobile)"
       className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur lg:hidden"
     >
       <ul className="mx-auto grid max-w-lg grid-cols-5 items-end px-1 pt-1">

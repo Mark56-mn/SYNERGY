@@ -33,6 +33,8 @@ export default function CommunitiesPage() {
         </button>
       </div>
 
+      {/* Section heading keeps the document outline in order (h1 → h2 → card h3). */}
+      <h2 className="sr-only">Community directory</h2>
       <ul className="mt-4 grid gap-3 sm:grid-cols-2">
         {DEMO_COMMUNITIES.map((community) => (
           <li key={community.slug}>

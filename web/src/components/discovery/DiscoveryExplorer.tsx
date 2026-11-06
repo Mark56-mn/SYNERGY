@@ -159,6 +159,10 @@ export function DiscoveryExplorer({ initialTab }: { initialTab?: string }) {
         aria-labelledby={`tab-${tab}`}
         className="mt-4 px-4 sm:px-0"
       >
+        {/* Results heading keeps h1 → h2 → card h3 order for each category. */}
+        <h2 className="sr-only">
+          {TABS.find((item) => item.id === tab)?.label ?? "Discovery"} results
+        </h2>
         {tab === "people" ? (
           people.length === 0 ? (
             empty

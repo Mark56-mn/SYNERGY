@@ -13,7 +13,10 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface/40 px-4 py-6 lg:flex xl:w-64">
+    <aside
+      aria-label="Sidebar"
+      className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface/40 px-4 py-6 lg:flex xl:w-64"
+    >
       <Link
         href="/"
         className="flex items-center gap-2 px-2 text-lg font-bold tracking-tight text-primary"
