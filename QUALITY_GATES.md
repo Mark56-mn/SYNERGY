@@ -14,6 +14,27 @@ A task is DONE only when applicable gates pass and evidence is recorded. If the 
 - Security/privacy implications reviewed.
 - Documentation and handoff updated.
 
+## Implemented local gates (as of TASK-005)
+
+No CI platform exists (G-5); every gate below runs locally and must be recorded with its command and exit code.
+
+| Gate | Command | Notes |
+| --- | --- | --- |
+| Aggregate | `npm run verify` | Runs every required gate below in order, fails on any failure; `-- --strict-audit` also fails on advisories |
+| Formatting | `npm run format:check` | Owner docs and planning records are excluded |
+| Lint | `npm run lint` | ESLint flat config, `next/core-web-vitals` + `next/typescript` |
+| Typecheck | `npm run typecheck` | All workspaces |
+| Unit/component tests | `npm test` | Vitest; jsdom per file for UI suites |
+| Accessibility | `npm test` (`tests/a11y/`) | axe-core 4.14.0. `color-contrast` cannot run under jsdom and is disabled with that reason; contrast stays a manual token review |
+| Responsive | `npm run check:responsive` | Requires Playwright (out-of-tree install; reports NOT RUN with exit 2, never a silent pass) and a running dev server |
+| Web build | `npm run build` | Production build of the web app |
+| Secret scan | `npm run secret-scan` | Tracked-blob credential patterns; any hit is an incident |
+| Import boundaries | `npm run check:boundaries` | Client layers may not import `src/server`; cross-module deep imports denied |
+| Dependency audit | `npm audit` | Advisory status reported separately by `verify`; remaining findings and owner decision B-5 are recorded in `handoff/TASK-005.md` §6 |
+| Android | `npm run android:typecheck`, `npx expo export --platform android` | Native build still requires JDK/SDK (see `handoff/TASK-003.md` §10) |
+
+Operational notes: running `next build` while `next dev` is serving the same `.next` directory invalidates the dev server (broken RSC payloads, unloaded CSS) — restart it before browser-based checks. Browser checks are evidence of rendering; DOM-only tests are not a substitute.
+
 ## Feature-specific tests
 - Auth: valid/invalid credentials, session lifecycle, rate limits, recovery and server-side authorization.
 - Social/privacy: owner vs non-owner, private/public visibility, blocked users, reporting and content removal.

@@ -1,16 +1,21 @@
 # SYNERGY — Current Development Status
 
-Last updated: 2026-11-06 — TASK-004 (responsive user experience) complete on `chore/autonomous-foundation-v1`
+Last updated: 2026-11-06 — TASK-005 (quality, accessibility and security gates) complete on `chore/autonomous-foundation-v1`
 Branch: `chore/autonomous-foundation-v1` (not merged into `main`)
 Foundation commits: `6933820` (root tooling, shared packages, db boundary), `388d3fe` (web + tests), `3657c60` (android); documentation commit follows them on the same branch.
 TASK-003 handoff: `handoff/TASK-003.md`
 TASK-004 handoff: `handoff/TASK-004.md`
+TASK-005 handoff: `handoff/TASK-005.md`
 
 ## Repository
 - Repository: Mark56-mn/SYNERGY
 - Default branch: `main` (`83cc6d3` — "Initial commit"); untouched, nothing merged.
 - Current stage: **foundation exists and runs** — monorepo with a Next.js web app, shared domain/design-token packages, an Expo Android foundation, a server-side security boundary, and local quality gates.
-- Product implementation: shell + contracts + security plumbing only. No feed, listings, bookings, moderation, messaging UI, payments or deployment.
+- Product implementation, stated precisely:
+  - **Presentation implemented (web):** responsive shell and navigation, home feed layout, discovery (people, communities, videos, businesses, products), individual/creator/business profile layout, community index and detail pages, video preview cards, loading/empty/error/disabled states.
+  - **Local-only interactions:** tab switching, client-side filtering over the demonstration dataset, like toggle, composer preview dialog. These do not persist.
+  - **Demo content only:** every profile, post, community, listing and video is fictional, labelled `Demo`, and media is token-based art — no real person, business, member or uploaded media.
+  - **Not implemented:** authentication, database persistence, real search, video playback/upload, messaging, bookings, membership, moderation, notifications delivery, payments, advertising, moderation backend, deployment. Video is presentation only; disabled controls are unavailable, not working.
 
 ## Source of truth
 Read `AGENTS.md`, `MASTER_BLUEPRINT.md`, `DECISION_REGISTER.md`, `MVP_SCOPE.md`, `SYSTEM_ARCHITECTURE.md`, `DESIGN_SYSTEM.md`, `SECURITY_RULES.md`, `QUALITY_GATES.md`, `ROADMAP.md`. D-01 stands: the 27-section blueprint in `docs/SYNERGY_MASTER_PRODUCT_BLUEPRINT_v1.0.md` is normative, `MASTER_BLUEPRINT.md` is the summary, `DECISION_REGISTER.md` remains authoritative for individual decision status.
@@ -20,7 +25,7 @@ Read `AGENTS.md`, `MASTER_BLUEPRINT.md`, `DECISION_REGISTER.md`, `MVP_SCOPE.md`,
 - TASK-002 — Architecture and technology plan — **DONE as documents** (approved at G-1 for the foundation phase by MISSION 02).
 - TASK-003 — Application foundation — **DONE** (`task/TASK-003-application-foundation.md`, `handoff/TASK-003.md`).
 - TASK-004 — Responsive user experience (shell, feed, discovery, profiles, communities, video, design system) — **DONE** (`task/TASK-004-responsive-user-experience.md`, `handoff/TASK-004.md`).
-- TASK-005 — Test and quality-gate extension — **READY** (not started).
+- TASK-005 — Quality, accessibility and security gate extension — **DONE** (`task/TASK-005-quality-and-security-gates.md`, `handoff/TASK-005.md`).
 
 ## What exists now
 - `web/` — Next.js 15 App Router, React 19, TypeScript strict, Tailwind 3.4, App-Router route handlers under `/api/v1`.
@@ -32,12 +37,12 @@ Read `AGENTS.md`, `MASTER_BLUEPRINT.md`, `DECISION_REGISTER.md`, `MVP_SCOPE.md`,
 - `packages/design-tokens` — navy/mint token source.
 - `db/` — drizzle-kit boundary; **no migrations yet** (identity slice owns the first).
 - `android/` — Expo SDK 57 + Expo Router five-tab foundation, monorepo-aware Metro config.
-- Gates: Prettier, ESLint, TypeScript, Vitest (40 tests), Next build, Android typecheck + Metro export, secret scan, import-boundary check, `npm audit`.
+- Gates: `npm run verify` aggregate (format, lint, typecheck, Vitest **72 tests**, Next build, secret scan, import boundaries), axe-core accessibility suite, Playwright responsive gate (`npm run check:responsive`, browser install required), Android typecheck + Metro export, `npm audit` (reported separately).
 
 ## Verified gate results (final tree)
-`npm install` 0 · `npm run format:check` 0 · `npm run lint` 0 (0 warnings) · `npm run typecheck` 0 · `npm test` 0 (**11 files / 55 tests**) · `npm run build` 0 (all routes prerendered; shared First Load JS 102 kB) · `npm run android:typecheck` 0 · `npx expo export --platform android` 0 (2.7 MB Hermes bundle, TASK-003 tree) · `npm run secret-scan` 0 (131 files) · `npm run check:boundaries` 0 (45 files).
+`npm install` 0 · `npm run format:check` 0 · `npm run lint` 0 (0 warnings) · `npm run typecheck` 0 · `npm test` 0 (**13 files / 72 tests**, including 8 axe-core accessibility tests) · `npm run check:responsive` 0 (6 viewports × 6 pages + dialog) · `npm run build` 0 (all routes prerendered; shared First Load JS 102 kB) · `npm run verify` 0 (all required gates) · `npm run android:typecheck` 0 · `npx expo export --platform android` 0 (2.7 MB Hermes bundle, TASK-003 tree; not re-run after TASK-005 because no Android source changed) · `npm run secret-scan` 0 · `npm run check:boundaries` 0 (45 files).
 Visual review (TASK-004) was rendered, not inferred: 360×800, 414×896, 768×1024, 1440×900 across home, discovery, profile, community and business surfaces — no horizontal overflow, three layout defects found and fixed (see `handoff/TASK-004.md` §8).
-Not passing: `npm run db:generate` exit 1 (no schema files yet — by design), `npm audit` exit 1 (21 affected packages in 7 advisory families, all documented in `handoff/TASK-003.md` §8).
+Not passing: `npm run db:generate` exit 1 (no schema files yet — by design), `npm audit` exit 1 (**19 affected packages: 2 critical, 3 high, 14 moderate**, re-triaged in `handoff/TASK-005.md` §6 after the `postcss` override fixed 2; the rest need breaking majors owned by B-5).
 
 ## Security posture
 Authentication is resolved server-side from the request; no route or service trusts a browser-supplied user ID. Ownership, role and cross-user isolation checks are deny-by-default and covered by tests using clearly labelled test doubles. **Identity is not live:** `SupabaseSessionSource.verify()` returns `null` until G-2 provisioning and TASK-006A, and no test claims production-grade security.
@@ -54,7 +59,7 @@ Authentication is resolved server-side from the request; no route or service tru
 |---|---|
 | B-3 Provisioning for the identity/data slice | Owner creates free-tier Neon + Supabase + Cloudinary development projects and supplies credentials as environment secrets (never in files or chat). |
 | B-4 CI provider (D-06) | Decide whether automated gates are adopted; currently locally run only. |
-| B-5 Dependency triage | Decide on Vitest 5 / Expo SDK 58 upgrades and whether transitive overrides are acceptable (details and tested recipe in `handoff/TASK-003.md` §8). |
+| B-5 Dependency triage | Decide on breaking majors (Vitest 5.1 critical; Expo SDK 58/expo-router high; Next 16) for the 19 remaining advisories. A single `postcss` override has already been applied and verified (TASK-005 §6); no further override is recommended without testing each in isolation. |
 | B-6 TASK-005 authorisation | Confirm whether the next task is TASK-005 (gate extension) or the identity slice once B-3 is resolved. |
 
 ## Environment note for future agents
@@ -64,4 +69,4 @@ Remote operations must use the authenticated GitHub route (the `cloud_git` tool 
 TASK-003 code commits and this handoff are pushed to `chore/autonomous-foundation-v1`; the exact remote-tip SHA and the confirmation that it matches local HEAD are recorded in the final TASK-003 delivery report and can be re-checked with `git log origin/chore/autonomous-foundation-v1 -1` after an authenticated fetch.
 
 ## Next action
-Owner: choose the next authorised task — the identity/profile persistence slice needs B-3 provisioning first; TASK-005 (test and gate extension) can start without it — and triage the audit items (B-5). Agent: do not begin either until authorised; when the identity slice starts, wire real sessions into the existing server boundary and replace demo profiles with persisted records rather than inventing a parallel path.
+Owner: authorise the identity/profile persistence slice and complete B-3 provisioning; triage B-5 (dependency majors). Agent: do not start identity or schema work until authorised. When it starts, wire real sessions into the existing server boundary, replace demo profiles with persisted records, and treat the TASK-005 gates (`npm run verify`, axe suite, responsive gate) as the definition of done.
