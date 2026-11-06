@@ -93,7 +93,8 @@ describe("server env validation (ADR-0007)", () => {
   it("a configured staging environment passes validation", () => {
     applyEnv({
       ...DEV_DEFAULTS,
-      APP_ENV: "staging",      DATABASE_URL: "postgresql://db.staging.example:5432/synergy",
+      APP_ENV: "staging",
+      DATABASE_URL: "postgresql://db.staging.example:5432/synergy",
       SUPABASE_AUTH_URL: "https://identity.staging.example.zone",
       SUPABASE_AUTH_ANON_KEY: "placeholder-accessor-not-a-real-key-02",
     });
