@@ -61,7 +61,7 @@ Authentication is resolved server-side from the request; no route or service tru
 | B-3 Provisioning for the identity/data slice | Owner creates free-tier Neon + Supabase + Cloudinary development projects and supplies credentials as environment secrets (never in files or chat). |
 | B-4 CI provider (D-06) | Decide whether automated gates are adopted; currently locally run only. |
 | B-5 Dependency triage | Decide on breaking majors (Vitest 5.1 critical; Expo SDK 58/expo-router high; Next 16) for the 19 remaining advisories. A single `postcss` override has already been applied and verified (TASK-005 §6); no further override is recommended without testing each in isolation. |
-| B-6 TASK-005 authorisation | Confirm whether the next task is TASK-005 (gate extension) or the identity slice once B-3 is resolved. |
+| B-6 TASK-006 authorisation | TASK-006 planning is prepared; complete G-2 and explicitly release TASK-006A before implementation. TASK-006B depends on TASK-006A review. |
 
 ## Environment note for future agents
 Remote operations must use the authenticated GitHub route (the `cloud_git` tool route), not shell `git fetch`/`push`, which cannot authenticate here. TASK-001 records the original incident.
