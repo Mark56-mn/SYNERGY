@@ -118,7 +118,7 @@ All commands were run from the repository root on this branch. Exit codes are as
 | Database generate | `npm run db:generate` | **1** | `No schema files found for path config []` — **expected**: no tables exist yet; the identity slice owns the first migration. Not claimed as a pass. |
 | Dependency audit | `npm audit` | **1** | 21 affected packages / 7 families, all documented in §8 |
 | Import boundaries | `npm run check:boundaries` | 0 | 22 files checked, no violations |
-| Secret scan | `npm run secret-scan` | 0 | 57 tracked files scanned, clean |
+| Secret scan | `npm run secret-scan` | 0 | Clean; final run covers all 131 tracked files on the branch |
 | Diff review | `git status`, `git diff` | — | Reviewed: no secrets, no `.env` files, no generated artifacts, owner-authored documents untouched (reverted after a formatter pass) |
 
 **No CI exists** (G-5 unapproved); every gate above runs locally.
