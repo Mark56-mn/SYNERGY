@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { ReactNode } from "react";
 
+import { AppShell } from "@/components/shell/AppShell";
 import { tokens } from "@synergy/design-tokens";
 
 import "./globals.css";
@@ -28,7 +29,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
