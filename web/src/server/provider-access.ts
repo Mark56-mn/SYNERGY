@@ -7,16 +7,19 @@ import "server-only";
  * mock-based DI container: this module decides, from the configured
  * environment, which concrete implementations the routes receive.
  *
- * - `SupabaseSessionSource` requires configured Supabase Auth variables;
- *   it is explicitly NOT configured in this task (no provider project yet,
- *   G-2 provisioning is owner-owned), so a clear setup error is thrown on
- *   demand instead of silently shipping an unverified identity path.
- * - Routes that need a session in this foundation receive their source at
- *   construction time (see src/modules/example-owned-resource/), so tests
- *   inject labelled test doubles and never the real path.
+ * - `SupabaseSessionSource` is the production path (TASK-006A). It verifies
+ *   the caller's Supabase Auth session server-side through the provider's own
+ *   `/auth/v1/user` endpoint, so signature, issuer, audience, expiry and
+ *   revocation are the provider's judgement and never re-implemented here.
+ *   Construction is configuration-gated: without `SUPABASE_AUTH_URL` and
+ *   `SUPABASE_AUTH_ANON_KEY` it throws a value-free setup error, and callers
+ *   that must not fail hard use `isSupabaseAuthConfigured()` and deny.
+ * - Routes are constructed with their source, so tests inject labelled test
+ *   doubles and never the real path.
  */
 
-import { SupabaseSessionSource } from "@/server/auth/session";
+import { SupabaseSessionSource, bearerTokenOf } from "@/server/auth/session";
+import { createSupabaseTokenVerifier } from "@/server/auth/supabase-session";
 import { getEnv } from "@/server/env";
 
 export function createSupabaseSessionSource(): SupabaseSessionSource {
@@ -26,22 +29,15 @@ export function createSupabaseSessionSource(): SupabaseSessionSource {
       "Supabase Auth is not configured in this environment (SUPABASE_AUTH_URL / SUPABASE_AUTH_ANON_KEY missing). Configure G-2 provider credentials in approved secret storage before identity flows go live.",
     );
   }
+
+  const verifier = createSupabaseTokenVerifier({
+    url: env.SUPABASE_AUTH_URL,
+    anonKey: env.SUPABASE_AUTH_ANON_KEY,
+  });
+
   return new SupabaseSessionSource({
-    readBearerToken: (request: Request) => {
-      const header = request.headers.get("authorization");
-      if (header?.startsWith("Bearer ")) {
-        const token = header.slice(7).trim();
-        return token.length > 0 ? token : null;
-      }
-      return null;
-    },
-    verify: async (token: string) => {
-      // Deliberately NOT implemented in this task: no Supabase project
-      // exists to verify against (G-2). Identity verification must be
-      // validated end-to-end when credentials land; nothing may pretend it.
-      void token;
-      return null;
-    },
+    readBearerToken: (request: Request) => bearerTokenOf(request),
+    verify: (token: string) => verifier.verify(token),
   });
 }
 
