@@ -1,6 +1,6 @@
 # TASK-006 — Identity and profile persistence
 
-Status: **BLOCKED — planning prepared; implementation not authorised to start until G-2 is satisfied and the owner explicitly releases this task.**
+Status: **TASK-006A PARTIAL (2026-11-07)** — server-side Supabase verification implemented and tested; live provider binding blocked (B-7: `SUPABASE_AUTH_URL` / `SUPABASE_AUTH_ANON_KEY` absent). **TASK-006B: BLOCKED — not started.** Implementation record: `handoff/TASK-006.md`.
 Branch: `chore/autonomous-foundation-v1`
 Planning base: `f58fdfbc4acb8321a0c6b503eacbb15de2ac4823`
 Handoff: `handoff/TASK-006.md`

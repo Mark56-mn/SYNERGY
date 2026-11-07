@@ -1,11 +1,12 @@
 # SYNERGY — Current Development Status
 
-Last updated: 2026-11-06 — TASK-006 planning prepared; identity implementation blocked on G-2
+Last updated: 2026-11-07 — TASK-006A (Supabase identity verification) PARTIAL: server-side verification implemented, live provider binding blocked on B-7
 Branch: `chore/autonomous-foundation-v1` (not merged into `main`)
 Foundation commits: `6933820` (root tooling, shared packages, db boundary), `388d3fe` (web + tests), `3657c60` (android); documentation commit follows them on the same branch.
 TASK-003 handoff: `handoff/TASK-003.md`
 TASK-004 handoff: `handoff/TASK-004.md`
 TASK-005 handoff: `handoff/TASK-005.md`
+TASK-006 handoff: `handoff/TASK-006.md`
 
 ## Repository
 - Repository: Mark56-mn/SYNERGY
@@ -21,7 +22,7 @@ TASK-005 handoff: `handoff/TASK-005.md`
 Read `AGENTS.md`, `MASTER_BLUEPRINT.md`, `DECISION_REGISTER.md`, `MVP_SCOPE.md`, `SYSTEM_ARCHITECTURE.md`, `DESIGN_SYSTEM.md`, `SECURITY_RULES.md`, `QUALITY_GATES.md`, `ROADMAP.md`. D-01 stands: the 27-section blueprint in `docs/SYNERGY_MASTER_PRODUCT_BLUEPRINT_v1.0.md` is normative, `MASTER_BLUEPRINT.md` is the summary, `DECISION_REGISTER.md` remains authoritative for individual decision status.
 
 ## Current task state
-- TASK-006 — Identity and profile persistence — **BLOCKED / planning prepared** (`task/TASK-006-identity-and-profile-persistence.md`, `handoff/TASK-006.md`); no implementation started. TASK-006A identity integration requires G-2 and explicit owner release; TASK-006B profile persistence depends on TASK-006A review.
+- TASK-006 — Identity and profile persistence — TASK-006A **PARTIAL** (`task/TASK-006-identity-and-profile-persistence.md`, `handoff/TASK-006.md`): server-side Supabase token verification implemented and tested; live sign-in, cookie sessions and logout **BLOCKED** on B-7. TASK-006B profile persistence **BLOCKED**, not started.
 - TASK-001 — Repository Assessment — **DONE** (`handoff/TASK-001.md`).
 - TASK-002 — Architecture and technology plan — **DONE as documents** (approved at G-1 for the foundation phase by MISSION 02).
 - TASK-003 — Application foundation — **DONE** (`task/TASK-003-application-foundation.md`, `handoff/TASK-003.md`).
@@ -46,7 +47,7 @@ Visual review (TASK-004) was rendered, not inferred: 360×800, 414×896, 768×10
 Not passing: `npm run db:generate` exit 1 (no schema files yet — by design), `npm audit` exit 1 (**19 affected packages: 2 critical, 3 high, 14 moderate**, re-triaged in `handoff/TASK-005.md` §6 after the `postcss` override fixed 2; the rest need breaking majors owned by B-5).
 
 ## Security posture
-Authentication is resolved server-side from the request; no route or service trusts a browser-supplied user ID. Ownership, role and cross-user isolation checks are deny-by-default and covered by tests using clearly labelled test doubles. **Identity is not live:** `SupabaseSessionSource.verify()` returns `null` until G-2 provisioning and TASK-006A, and no test claims production-grade security.
+Authentication is resolved server-side from the request; no route or service trusts a browser-supplied user ID. Ownership, role and cross-user isolation checks are deny-by-default and covered by tests using clearly labelled test doubles. **Identity verification is implemented but not live-verified:** `SupabaseSessionSource` now verifies bearer tokens through Supabase Auth's own `/auth/v1/user` endpoint (signature, issuer, audience, expiry and revocation are the provider's judgement), fails closed to `null`, and rejects non-UUID ids. It is configuration-gated, so without Auth credentials every protected route still denies. The 12 new tests prove the boundary with the HTTP transport stubbed; **they do not prove live provider integration**, and no test claims production-grade security. Sign-in, cookie/SSR sessions, CSRF tokens and logout are not implemented.
 
 ## Important constraints
 - Ibadan-first; dark navy + mint.
@@ -62,6 +63,7 @@ Authentication is resolved server-side from the request; no route or service tru
 | B-4 CI provider (D-06) | Decide whether automated gates are adopted; currently locally run only. |
 | B-5 Dependency triage | Decide on breaking majors (Vitest 5.1 critical; Expo SDK 58/expo-router high; Next 16) for the 19 remaining advisories. A single `postcss` override has already been applied and verified (TASK-005 §6); no further override is recommended without testing each in isolation. |
 | B-6 TASK-006 authorisation | TASK-006 planning is prepared; complete G-2 and explicitly release TASK-006A before implementation. TASK-006B depends on TASK-006A review. |
+| B-7 Supabase Auth credentials (blocks TASK-006A live verification) | Add `SUPABASE_AUTH_URL` (project URL) and `SUPABASE_AUTH_ANON_KEY` (anon/public key) to Settings → Secrets. The supplied Supabase secret is a Postgres connection string, not Auth API configuration. Do **not** add a `service_role` key. |
 
 ## Environment note for future agents
 Remote operations must use the authenticated GitHub route (the `cloud_git` tool route), not shell `git fetch`/`push`, which cannot authenticate here. TASK-001 records the original incident.
@@ -70,4 +72,4 @@ Remote operations must use the authenticated GitHub route (the `cloud_git` tool 
 TASK-003 code commits and this handoff are pushed to `chore/autonomous-foundation-v1`; the exact remote-tip SHA and the confirmation that it matches local HEAD are recorded in the final TASK-003 delivery report and can be re-checked with `git log origin/chore/autonomous-foundation-v1 -1` after an authenticated fetch.
 
 ## Next action
-Owner: complete G-2 provisioning and explicitly authorise TASK-006A. TASK-006 is planned in `task/TASK-006-identity-and-profile-persistence.md`; the implementation handoff is `handoff/TASK-006.md`. Agent: do not start identity or schema work until G-2 is evidenced and TASK-006A is released. TASK-006B follows only after TASK-006A review. B-5 dependency-major triage remains separate.
+Owner: satisfy **B-7** (`SUPABASE_AUTH_URL`, `SUPABASE_AUTH_ANON_KEY`) so TASK-006A can be live-verified, and supply `DATABASE_URL` for the data slice; B-5 dependency-major triage remains separate. Agent: do not start TASK-006B or any schema work until TASK-006A is live-verified and reviewed. When it starts, key profiles by the verified `supabase_user_id` this task now produces, and treat the TASK-005 gates (`npm run verify`, axe suite, responsive gate) as the definition of done.

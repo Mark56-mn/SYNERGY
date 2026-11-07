@@ -1,6 +1,6 @@
 # TASK-006A — Identity and auth foundation
 
-Status: READY (in form) — start only after G-1 approval and after TASK-003 scaffold + TASK-005 quality gates exist.
+Status: **PARTIAL** (2026-11-07) — server-side Supabase token verification implemented and tested; live provider binding blocked on B-7 (`SUPABASE_AUTH_URL` / `SUPABASE_AUTH_ANON_KEY` not present in the environment). See `handoff/TASK-006.md`. Started after G-1 approval and the TASK-003 scaffold + TASK-005 gates existed.
 
 Goal
 Add email-based sign-up/sign-in/recovery via Supabase Auth and server-side session verification, so the app has an identity foundation without building a second password system.
@@ -42,3 +42,18 @@ Security / privacy impact
 
 Cost impact
 - None incurred. Supabase Auth + Neon provisioning is an owner gate; free-tier/dev usage only after owner action.
+
+## Implementation record (2026-11-07)
+
+Branch `chore/autonomous-foundation-v1`; full detail and evidence in `handoff/TASK-006.md`.
+
+- **Done:** `SupabaseSessionSource` verifies tokens through Supabase Auth's `/auth/v1/user`
+  using the already-installed `@supabase/supabase-js` (no dependency added), with
+  signature/issuer/audience/expiry/revocation judged by the provider. Config-gated; fails
+  closed to `null`; verified id must be a UUID; roles stay the fixed `member` default.
+- **Not done, blocked:** live sign-in/sign-out and cookie sessions. The environment holds a
+  Supabase **Postgres connection string**, not Auth API credentials, so no Auth endpoint can
+  be called and no live verification is claimed.
+- **Owner action (B-7):** add `SUPABASE_AUTH_URL` and `SUPABASE_AUTH_ANON_KEY` to secret
+  storage. Do not add a `service_role` key.
+- TASK-006B remains blocked and was not started.
