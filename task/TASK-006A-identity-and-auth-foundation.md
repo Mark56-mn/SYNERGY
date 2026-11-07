@@ -57,7 +57,10 @@ Branch `chore/autonomous-foundation-v1`; full detail and evidence in `handoff/TA
 - **B-7a resolved (2026-11-07):** `SUPABASE_AUTH_URL` and `SUPABASE_AUTH_ANON_KEY` now point
   at the real SYNERGY project (`gqvtpvnipfrcqfkdevsx`). Live: `/auth/v1/settings` 200, forged
   token rejected 403 by the provider, and our protected route returns a uniform 401 both with
-  no token and with the rejected one (fail closed). The anon key only; no `service_role` key.
+  no token and with the rejected one (fail closed). The running app confirms it, too: a
+  temporary probe reported `{"configured":true}` (deleted before commit). Next loads env from
+  its project directory, so the file the app reads is `web/.env.local`. The anon key only; no
+  `service_role` key.
 - **B-7b open:** a successful session is not yet verified — the project has no confirmed test
   user and email confirmation is required. Needs an owner-confirmed user or approval to create
   one.

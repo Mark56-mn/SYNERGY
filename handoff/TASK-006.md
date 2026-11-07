@@ -103,6 +103,15 @@ Live checks actually run (status codes only, no values recorded):
 The last row is the important one: the request left our process, was rejected by the real
 provider, and the boundary converted that rejection into the uniform unauthenticated result.
 
+App-side confirmation: a temporary `/api/v1/probe` route (deleted before committing; the tree
+was clean afterwards) reported `{"configured":true}` from `isSupabaseAuthConfigured()` at
+runtime, so the running app — not just `curl` — sees the Auth configuration.
+
+**Where the file must live:** Next loads env from its own project directory, so the copy at
+`web/.env.local` is the one the app reads. Both `web/.env.local` and the repository-root
+`.env.local` are gitignored. A clean "root file only" control was attempted and **invalidated
+by a shell `cwd` mistake**, so it is not claimed; treat `web/.env.local` as required.
+
 **Still outstanding (B-7b):** a *successful* session has not been verified, because the
 project has no confirmed test user and `mailer_autoconfirm` is `false`, so sign-up cannot
 complete without mailbox access. That needs either an owner-confirmed test user whose access
@@ -157,9 +166,10 @@ No UI, tokens, schema, migration, route, demo-data, Android or dependency change
 
 ## Live configuration verification (2026-11-07)
 
-Recorded above under B-7. Summary: real project reachable, anon key valid, forged token
-rejected by the provider and denied by our route, no token denied. A valid-session round trip
-remains outstanding (B-7b: no confirmed test user).
+Recorded above under B-7. Summary: real project reachable (200), anon key valid, forged token
+rejected by the provider (403) and denied by our route (401), no token denied, and the running
+app reports itself configured (`{"configured":true}` via a temporary probe). A valid-session
+round trip remains outstanding (B-7b: no confirmed test user).
 
 ## Evidence
 
