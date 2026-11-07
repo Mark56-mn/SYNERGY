@@ -72,8 +72,8 @@ built: that would have been unverifiable code claiming an integration it never e
 
 | Variable | Required | Found |
 | --- | --- | --- |
-| `SUPABASE_AUTH_URL` | yes | **MISSING** |
-| `SUPABASE_AUTH_ANON_KEY` | yes | **MISSING** |
+| `SUPABASE_AUTH_URL` | yes | present since 2026-11-07 (local `.env.local`, gitignored) |
+| `SUPABASE_AUTH_ANON_KEY` | yes | present since 2026-11-07 (local `.env.local`, gitignored) |
 | `DATABASE_URL` | not for 006A | absent |
 | `SUPABASE_CONNECTION_STRING` | no — a Postgres DSN, not Auth config | present |
 | `NEON_CONNECTION_STRING` | no — 006B owns it | present |
@@ -83,11 +83,36 @@ The three provider values exist under **arbitrary secret names**; the app reads 
 (`.env.example`, ADR-0007), so `SUPABASE_CONNECTION_STRING` is never read as
 `SUPABASE_AUTH_URL`.
 
-### Blocker B-7 (owner action)
+### Blocker B-7 — **URL and key resolved; positive-path session still pending**
 
-Add to Settings → Secrets: `SUPABASE_AUTH_URL` (`https://<project-ref>.supabase.co`) and
-`SUPABASE_AUTH_ANON_KEY` (anon/public key). Do **not** add a `service_role` key. Supply the
-Neon DSN as `DATABASE_URL` when TASK-006B starts.
+**Resolved 2026-11-07** via the owner's Freebuff Supabase integration: project **SYNERGY**,
+ref `gqvtpvnipfrcqfkdevsx`, `ACTIVE_HEALTHY`, `eu-central-1`, Auth config
+`external_email_enabled: true`, `disable_signup: false`, `site_url: http://localhost:3000`.
+`SUPABASE_AUTH_URL` and `SUPABASE_AUTH_ANON_KEY` (the legacy **anon** key — never the
+`service_role`/`sb_secret` key) are now in the gitignored `.env.local`.
+
+Live checks actually run (status codes only, no values recorded):
+
+| Check | Result |
+| --- | --- |
+| `GET /auth/v1/settings` with the anon key | **200** — URL and key are valid and reachable |
+| `GET /auth/v1/user` with a forged bearer token | **403** from Supabase |
+| `GET /api/v1/owned-items`, no token | **401** `unauthorized` |
+| `GET /api/v1/owned-items`, forged token (our code calls the provider) | **401** `unauthorized`, failing closed |
+
+The last row is the important one: the request left our process, was rejected by the real
+provider, and the boundary converted that rejection into the uniform unauthenticated result.
+
+**Still outstanding (B-7b):** a *successful* session has not been verified, because the
+project has no confirmed test user and `mailer_autoconfirm` is `false`, so sign-up cannot
+complete without mailbox access. That needs either an owner-confirmed test user whose access
+token can be supplied out-of-band, or explicit approval to create a test user (which changes
+project auth state and is therefore not done unilaterally). Do **not** work around this with a
+`service_role` key.
+
+Owner follow-up: also add both names to **Settings → Secrets**, because `.env.local` is
+regenerated from project secrets and this chat's local values will not survive a restore.
+Supply the Neon DSN as `DATABASE_URL` when TASK-006B starts.
 
 ### Incident disclosure
 
@@ -130,6 +155,12 @@ No UI, tokens, schema, migration, route, demo-data, Android or dependency change
 | CSRF | Not applicable to the bearer path (no ambient cookie authority). Cookie/SSR sessions unimplemented. |
 | Secret exposure | Only variable names appear in code, tests and docs. Secret scan clean over the tracked tree. |
 
+## Live configuration verification (2026-11-07)
+
+Recorded above under B-7. Summary: real project reachable, anon key valid, forged token
+rejected by the provider and denied by our route, no token denied. A valid-session round trip
+remains outstanding (B-7b: no confirmed test user).
+
 ## Evidence
 
 | Gate | Exit | Result |
@@ -155,7 +186,8 @@ server not started this turn) and `npx expo export --platform android` (no Andro
 
 ## Known limitations
 
-1. No live verification — B-7.
+1. Configuration is live-verified (provider reachable, forged token denied end-to-end); a
+   **successful** session is not yet verified — B-7b needs a confirmed test user.
 2. No sign-in UI, login route, cookie session, CSRF token or logout endpoint. Supabase email
    flows need the anon key; building them blind was rejected rather than faked.
 3. Per-request provider round-trip; a verified-session cache is a TASK-006B decision.
