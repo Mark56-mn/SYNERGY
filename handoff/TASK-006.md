@@ -119,8 +119,9 @@ token can be supplied out-of-band, or explicit approval to create a test user (w
 project auth state and is therefore not done unilaterally). Do **not** work around this with a
 `service_role` key.
 
-Owner follow-up: also add both names to **Settings → Secrets**, because `.env.local` is
-regenerated from project secrets and this chat's local values will not survive a restore.
+Owner follow-up **done 2026-11-07**: both names are now exported by the environment
+(Settings → Secrets) and were confirmed present by name only, so a restored workspace picks
+them up; `.env.local` and `web/.env.local` are refreshed from the environment on request.
 Supply the Neon DSN as `DATABASE_URL` when TASK-006B starts.
 
 ### Incident disclosure
