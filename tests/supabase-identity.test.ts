@@ -21,9 +21,12 @@ import {
  *
  *   - deny-by-default for absent, malformed and unacceptable tokens;
  *   - the identity used downstream is the PROVIDER-VERIFIED user id only;
- *   - provider errors, network failures and malformed responses fail closed;
- *   - tokens never leak into logs, responses or thrown values;
+ *   - provider errors, network failures and invalid identity responses fail closed;
+ *   - provider error details are discarded by the verifier rather than returned;
  *   - client-asserted identity and roles are never merged in.
+ *
+ * These tests do not instrument the application's complete logging/HTTP
+ * response pipeline, so they are not proof of system-wide token non-disclosure.
  *
  * They do NOT prove live integration against a Supabase project: the HTTP
  * transport is stubbed, even though the implementation agent reports that
