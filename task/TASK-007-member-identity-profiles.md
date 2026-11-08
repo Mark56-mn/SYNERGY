@@ -1,6 +1,6 @@
 # TASK-007 — Member Identity & Profiles
 
-Status: **READY FOR IMPLEMENTATION**
+Status: **BLOCKED (2026-11-08)** — source and design audit complete; implementation did not start. No application database exists in the working environment (`DATABASE_URL` and every equivalent are absent, including from `.env.local`), and the two reference boards are not present in the container. See §10 and `handoff/TASK-007.md`.
 Priority: P0 — first persistent member-facing product capability after authentication.
 Branch: `task/TASK-007-member-identity-profiles`
 Base: `6a10d64e639115753ba595e5f807151db2363c49` (`task/TASK-006C-deployment-experience-consistency`)
@@ -181,3 +181,55 @@ Run and record exact commands, exit codes and results:
 - Preserve task-by-task workflow. After implementation, update this task file, `handoff/TASK-007.md`, and `handoff/CURRENT_STATUS.md`.
 - Include a clear handoff for TASK-008 Social Publishing, but do not begin it.
 - Leave a clean working tree and report exact commit SHA and push status.
+
+## 10. Execution record — 2026-11-08 (BLOCKED before implementation)
+
+Stage 1 of §2 was completed; per the rule in §5 that a missing prerequisite
+must be documented rather than faked, stages §4A–§4E did not start.
+
+### 10.1 Prerequisite checks (presence only; no value read)
+
+| Check | Result |
+| --- | --- |
+| `DATABASE_URL`, `NEON_DATABASE_URL`, `POSTGRES_URL`, `SUPABASE_DB_URL` in the environment | all **missing** |
+| `.env.local` and `web/.env.local` | present, contain `APP_ENV`, `APP_ORIGIN`, `SUPABASE_AUTH_URL`, `SUPABASE_AUTH_ANON_KEY`, `MEDIA_PROVIDER_ADAPTER`, `LOG_LEVEL` — **no `DATABASE_URL`** |
+| `db/drizzle.config.ts` | `schema: []`; `db/migrations/` absent |
+| `npm run db:generate` | exit 1 (no schema files — as designed) |
+| `/mnt/data/image_471bde6f.jpg`, `/mnt/data/image_d8ec3e9b.jpg` | **absent**; `/mnt` is empty |
+| Any committed design/reference image | none (no image files in tracked source) |
+
+Provisioning Neon is a paid-infrastructure decision (`DECISION_REGISTER.md`
+D-013 is RECOMMENDED DIRECTION, not CONFIRMED) and is outside this task's
+authority; switching the store to the existing Supabase project's Postgres would
+overturn a recorded architecture decision. Both are owner decisions.
+
+### 10.2 Design mapping (from this spec's written description — not fidelity-verified)
+
+The boards could not be inspected. Mapping of the cues described in §2 to the
+existing implementation, to be re-verified once the images are committed:
+
+| Cue | Existing expression | Where it applies |
+| --- | --- | --- |
+| Navy background/surfaces | `bg-bg`, `bg-surface`, `border-border` tokens | profile, onboarding, edit pages |
+| Mint accent / active tab | `tone="primary"`, mint `primary` token, `Tabs` active state | Edit Profile, Save, availability states |
+| Compact top bar (settings, Edit Profile) | shell `Sidebar` (desktop) + `BottomNav` (mobile); no profile-local bar yet | new profile header |
+| Centered avatar, identity, bio | `Avatar size="xl"`, `h1`, `@handle`, `text-ink-muted` bio in `ProfileView` | reuse with real values, drop the demo badge |
+| Follower/like statistics | `dl` currently labelled `(demo)` | keep shape, honest values only |
+| Content tabs | `Tabs` (Posts/About/Media) with `role="tabpanel"` | empty states, not fake content |
+| Unbuilt actions | Follow/Message use `aria-disabled` + `aria-describedby` | same pattern for future actions |
+
+### 10.3 Outcome
+
+No schema, migration, API route, component, test, dependency or environment
+variable was added. Gates that could run on a documentation-only tree passed
+(`format:check`, `lint`, `typecheck`, `test`, `build`, `secret-scan`,
+`check:boundaries`, `verify`); `check:responsive` remains NOT RUN (no local
+browser libraries, no root). Handoff: `handoff/TASK-007.md`.
+
+### 10.4 Unblock (two owner steps)
+
+1. Provision an isolated **non-production** Postgres and expose `DATABASE_URL`
+   in approved secret storage (and `web/.env.local` for local runs).
+2. Commit the two reference boards under `docs/design/`.
+
+Then §4A–§4E can proceed as specified, with no further decisions required.
