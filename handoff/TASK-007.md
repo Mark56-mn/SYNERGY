@@ -207,3 +207,20 @@ privacy and cross-user tests → browser checks at 360/414/1280/1440 → handoff
 `task/TASK-007A-content-publishing-ownership.md` covers publishing and
 `task/TASK-008-follow-graph-and-visibility.md` the follow graph). Both inherit
 B-8: neither can persist content without the same database.
+
+
+## 11. Owner-approved database unblock update — 2026-11-08
+
+The earlier B-8 statement is superseded. An existing Neon project named **Synergy** was found in the connected account (project ID `ancient-band-38052550`, PostgreSQL 18, database `neondb`). The production branch was left untouched.
+
+Owner approved proceeding with the existing project. A dedicated branch was created from production HEAD and verified ready:
+- `task-007-member-identity-profiles`
+- Branch ID `br-steep-field-b3nti5ov`
+- Compute: 0.25 CU minimum and maximum
+- No migrations or application data changes have been made.
+
+A pooled connection string was generated for this dedicated branch. The privileged URI is deliberately excluded from GitHub, this handoff, chat and logs. The owner must add it as `DATABASE_URL` using FreeBuff's secure secret/environment-variable interface, and expose it to local web commands as `web/.env.local` (gitignored). Never put the value in the mission prompt or repository. The agent must verify the connection targets branch ID `br-steep-field-b3nti5ov`, never the production branch.
+
+The design boards are available in the current ChatGPT project working files, but not yet in the FreeBuff container/repository. This remains an access limitation until they are made available to the agent; no design-fidelity claim is authorized before inspection.
+
+**Resume point:** after secure environment setup, continue from §4A of the authoritative TASK-007 spec. Verify connection without printing secrets, generate/test migrations only on the dedicated branch, then complete onboarding, profile read/edit, privacy enforcement and tests. No production migration, main merge or Production promotion.
