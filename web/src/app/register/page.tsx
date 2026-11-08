@@ -22,7 +22,7 @@ export default async function RegisterPage() {
   return (
     <AuthShell
       title="Create your SYNERGY account"
-      description="One account for people, creators, communities, services and products — Ibadan first."
+      description="One account for people, creators, communities, services and products."
       footer={
         <>
           Already have an account?{" "}
