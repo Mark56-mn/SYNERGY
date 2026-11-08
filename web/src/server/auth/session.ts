@@ -11,16 +11,15 @@ import "server-only";
  * creates, stores or verifies passwords, and never trusts client-asserted
  * roles.
  *
- * In this task no Supabase project exists yet (gate G-2 is owner-owned), so:
- * - `SupabaseSessionSource` is the production path wired for G-2: it verifies
- *   the caller's Supabase Auth session server-side using the project's
- *   env-supplied URL + public accessor, requiring a real `Authorization:
- *   Bearer <supabase-jwt>` header. Its correctness against a live project is
- *   explicitly UNVERIFIED in this task and must be validated when credentials
- *   land.
- * - Until then `getSupabaseSessionSource()` throws when unconfigured, and
- *   tests inject `TestSessionSource` doubles — clearly labelled test doubles,
- *   never presented as production security.
+ * TASK-006A now provides the server-side Supabase Auth bearer-token path:
+ * - `SupabaseSessionSource` verifies the caller's token through the configured
+ *   project's Auth user endpoint using an env-supplied URL and public anon key.
+ * - The implementation agent reports provider reachability and forged-token
+ *   rejection against the real project. A successful real-user token has not
+ *   yet been verified (B-7b), so live positive-path authentication remains
+ *   explicitly unverified.
+ * - When unconfigured, the composition root denies access; tests may inject
+ *   `TestSessionSource` doubles, which are never production authentication.
  */
 
 export interface Session {
