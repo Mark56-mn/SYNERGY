@@ -4,20 +4,20 @@ import { redirect } from "next/navigation";
 
 import { AuthShell } from "@/components/auth/AuthShell";
 import { RegisterForm } from "@/components/auth/RegisterForm";
-import {
-  getCurrentSession,
-  isSupabaseAuthConfigured,
-} from "@/server/provider-access";
+import { getCurrentSession } from "@/server/provider-access";
 
 export const metadata: Metadata = { title: "Create account" };
 
+/**
+ * Registration page. The form is always rendered (TASK-006C); when Auth is
+ * unconfigured the API explains why on submit. An already-signed-in user
+ * is redirected home instead of seeing a redundant form.
+ */
 export default async function RegisterPage() {
   const session = await getCurrentSession();
   if (session) {
     redirect("/");
   }
-
-  const configured = isSupabaseAuthConfigured();
 
   return (
     <AuthShell
@@ -35,14 +35,7 @@ export default async function RegisterPage() {
         </>
       }
     >
-      {configured ? (
-        <RegisterForm />
-      ) : (
-        <p className="text-sm leading-6 text-ink-muted">
-          Authentication isn&apos;t configured in this environment yet, so
-          registration is unavailable. Public browsing still works.
-        </p>
-      )}
+      <RegisterForm />
     </AuthShell>
   );
 }

@@ -39,7 +39,7 @@ const PAGES = [
   { path: "/u/amara.makes", name: "profile" },
   { path: "/b/bola.homefix", name: "business" },
   { path: "/communities", name: "communities" },
-  { path: "/communities/bodija-traders", name: "community" },
+  { path: "/communities/independent-traders", name: "community" },
 ];
 
 /**

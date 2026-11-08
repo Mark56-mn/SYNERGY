@@ -102,8 +102,8 @@ export function Sidebar({ authState }: { authState?: AuthNavState }) {
 
       <div className="mt-auto space-y-2 px-2">
         <p className="rounded-md border border-border bg-bg/60 p-3 text-[11px] leading-5 text-ink-muted">
-          Prototype build. Profiles and posts are fictional demonstrations — no
-          account, message or listing is stored.
+          Community preview. Profiles and posts are fictional demonstrations —
+          no profile, message or listing is stored yet.
         </p>
       </div>
     </aside>

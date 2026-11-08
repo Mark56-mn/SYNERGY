@@ -11,9 +11,9 @@ export default function ServicesScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Services</Text>
       <Text style={styles.body}>
-        Service and product listings from individual and business providers in
-        Ibadan will be discovered here, with provider acceptance controls built
-        into the booking flow.
+        Service and product listings from individual and business providers will
+        be discovered here, with provider acceptance controls built into the
+        booking flow.
       </Text>
       <Text style={styles.note}>
         Not shipping yet — foundation placeholder.
