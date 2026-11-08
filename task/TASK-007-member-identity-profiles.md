@@ -1,6 +1,6 @@
 # TASK-007 — Member Identity & Profiles
 
-Status: **BLOCKED (2026-11-08)** — source and design audit complete; implementation did not start. No application database exists in the working environment (`DATABASE_URL` and every equivalent are absent, including from `.env.local`), and the two reference boards are not present in the container. See §10 and `handoff/TASK-007.md`.
+Status: **IMPLEMENTED (2026-11-08)** on the isolated Neon branch `br-steep-field-b3nti5ov` — schema and migration applied, onboarding, profile view/edit, public/private enforcement, API and UI shipped, with 199 tests plus 12 live-database checks. Design-board fidelity remains **unverified** because the reference images are still absent from this container (B-9). §10 records the earlier blocked run; §11 records the implementation and `handoff/TASK-007.md` holds the full evidence.
 Priority: P0 — first persistent member-facing product capability after authentication.
 Branch: `task/TASK-007-member-identity-profiles`
 Base: `6a10d64e639115753ba595e5f807151db2363c49` (`task/TASK-006C-deployment-experience-consistency`)
@@ -252,3 +252,45 @@ With owner approval to proceed, an isolated task branch was created from the pro
 **Design references:** the two original boards are available in the current ChatGPT project working files, but are not yet present in the FreeBuff container or tracked repository. Do not claim they have been inspected by the agent until the agent can open them. Preserve B-9 as a design-access blocker; use the repo's documented design tokens meanwhile and do not invent fidelity claims.
 
 Next: once the owner has securely added `DATABASE_URL` to FreeBuff, resume at §4A. Verify connectivity without printing the URL or credentials, confirm the branch identity is `br-steep-field-b3nti5ov`, generate and test migrations only on that isolated branch, and continue the TASK-007 vertical slice. Do not run schema changes on `production`, change Supabase Auth, merge to `main`, or promote Production.
+
+## 12. Execution record — 2026-11-08 (IMPLEMENTED)
+
+The owner provisioned the isolated Neon branch and exported `DATABASE_URL`, so
+§4A–§4E were implemented in one vertical slice. Full evidence lives in
+`handoff/TASK-007.md`; the essentials:
+
+- **Target verified before any write**: `neon.branch_id` =
+  `br-steep-field-b3nti5ov`, `neon.project_id` = `ancient-band-38052550`,
+  database `neondb`; the branch was empty (0 user tables, no Drizzle history).
+  The connection string was never printed.
+- **§4A**: `web/src/modules/profile/schema.ts` — `profiles` keyed by the
+  Supabase Auth subject (UNIQUE), unique normalised `username`, display name,
+  bounded bio, URL-only avatar, `profile_visibility` enum (`public`|`private`),
+  timestamps, CHECK constraints. Migration `db/migrations/0000_nappy_vapor.sql`
+  applied with `npm run db:migrate` (exit 0).
+- **§4B**: idempotent onboarding (`ON CONFLICT (identity_id) DO NOTHING` + read
+  back); a lost handle race is a 409, not a second account.
+- **§4C**: own-profile `GET`/`PATCH`, public `GET /api/v1/profiles/[username]`,
+  `/onboarding`, `/profile`, `/profile/edit`, and `/u/[handle]` resolving real
+  members with demo fallback still labelled demo.
+- **§4D**: private profiles answer **404** to everyone but the owner; public
+  responses use a four-field allowlist; identity always comes from the verified
+  session.
+- **§4E**: `MemberProfileView`/`ProfileForm` reuse navy+mint tokens, `Avatar`,
+  `Badge`, `Tabs` and the `aria-disabled` reserved-action pattern. Follower/like
+  counts are deliberately absent rather than fabricated. **No fidelity claim** —
+  the boards remain inaccessible (§5 of the handoff; B-9).
+- **Gates**: format, lint, typecheck, test (25 files / 199 tests), build,
+  secret-scan, boundaries and `verify` all exit 0; `db:generate` 0;
+  `db:migrate` 0; live check 12/12. `check:responsive` still cannot start
+  (no Chromium libraries, no root) — **not run, not claimed**.
+- **Privacy defect found and fixed** (`3eb4217`): the public page returned the
+  raw repository record to the view, so development's async-debug payload could
+  carry the auth subject and private fields into a 404 response. The loader now
+  converts to an allowlisted DTO before returning; production payloads were
+  re-verified clean.
+- **Remaining limitations**: no browser viewport pass; no agent-run signed-in
+  onboarding (owner holds the session); avatar is a URL field only; visibility
+  is binary until the follow graph lands; account erasure is out of scope.
+
+Next task: **TASK-008 Social Publishing** (see `handoff/TASK-007.md` §9).

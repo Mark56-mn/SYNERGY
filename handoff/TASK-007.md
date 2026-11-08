@@ -1,215 +1,213 @@
 # TASK-007 — Member Identity & Profiles handoff
 
 - **Task:** TASK-007 — Member Identity & Profiles
-  (`task/TASK-007-member-identity-profiles.md`, authoritative spec, now
-  annotated with the execution record)
-- **Status:** **BLOCKED (2026-11-08)** — Stage 1 (source and design audit) is
-  complete; the vertical slice did not start. The application database does not
-  exist in this environment, and the reference boards are not present in this
-  container.
+  (`task/TASK-007-member-identity-profiles.md`, §12 records this run)
+- **Status:** **IMPLEMENTED** on the isolated database branch; design-board
+  fidelity remains unverified (B-9). The earlier BLOCKED run is preserved in
+  `task/TASK-007-member-identity-profiles.md` §10.
 - **Branch:** `task/TASK-007-member-identity-profiles`
 - **Base:** `6a10d64e639115753ba595e5f807151db2363c49` (TASK-006C)
-- **Branch tip before this mission:** `6f5e129` (the spec and status commits)
-- **Final commit:** the documentation commit on this branch (recorded in the
-  delivery report; this branch carries documentation only)
-- **`main` / Production:** untouched. Nothing merged, nothing promoted.
+- **Commits:** `111e1b0` (vertical slice) → `3eb4217` (privacy hardening) →
+  documentation commit on the same branch
+- **Database:** Neon project `ancient-band-38052550`, branch
+  `br-steep-field-b3nti5ov` (`task-007-member-identity-profiles`), database
+  `neondb`, server PostgreSQL 18.6
+- **`main` / Production:** untouched. Nothing merged, nothing promoted, no
+  Vercel deployment attempted.
 
-## 1. Why the slice was not implemented
+## 1. What shipped
 
-The spec's own rule (§5, §6): *"If a required prerequisite is absent, stop at a
-safe interface and document the blocker; do not fake persistence or successful
-operations."* The mission brief adds: *"If `DATABASE_URL` is missing, report the
-exact blocker and stop database-dependent work rather than pretending
-persistence works."*
+One coherent vertical slice, in the order the spec asked for it.
 
-`DATABASE_URL` is missing, and so is every equivalent. That is fatal rather than
-inconvenient: §4A requires a real table and an applied migration, §4B/§4C
-require reads and writes that survive refresh and a new session, and §4D
-requires privacy enforced *in the data-access layer*. Every one of those is a
-database operation. Implementing them against an in-memory store would be the
-"frontend-only demonstration" the task exists to replace, and would make the
-definition of done (§8) unverifiable by construction.
+| Spec area | Delivered |
+| --- | --- |
+| §4A database + identity linkage | `web/src/modules/profile/schema.ts` — `profiles` table keyed by the Supabase Auth subject (`identity_id uuid`, UNIQUE), unique normalised `username`, `display_name`, bounded `bio`, `avatar_url`, `profile_visibility` enum (`public`, `private`), `created_at`/`updated_at`. Applied as `db/migrations/0000_nappy_vapor.sql` |
+| §4B onboarding | `POST /api/v1/profile/onboarding` + `/onboarding` page. Idempotent: `ON CONFLICT (identity_id) DO NOTHING` then read-back, so a retry or an interrupted attempt resumes (`created: false`, 200). A lost username race is a 409 |
+| §4C view + edit | `GET`/`PATCH /api/v1/profile`, `GET /api/v1/profiles/[username]`, `/profile`, `/profile/edit`, `/u/[handle]` now resolves real members (demo accounts still render as demo, truthfully labelled) |
+| §4D privacy foundation | `public` \| `private` enforced in the service layer; a private profile is answered **404** to everyone but its owner (403 would confirm the handle exists). Public responses are built from a four-field allowlist |
+| §4E design + responsive | `MemberProfileView` reuses the navy/mint tokens, `Avatar`, `Badge`, `Tabs` and the `aria-disabled` reserved-action pattern; honest empty states instead of invented follower/like counts. **Fidelity is not claimed** — see §5 |
 
-## 2. Environment evidence (names only; no value was read)
+Supporting change: `packages/domain/src/users-and-profiles.ts` now owns the
+profile contract (username normalisation, bounds, visibility vocabulary,
+strict onboarding/update schemas, public DTO allowlist). The old placeholder
+listed a `followers` visibility value that no server could enforce before a
+follow graph exists; it is removed deliberately, not forgotten.
 
-| Check | Command shape | Result |
-| --- | --- | --- |
-| Shell variables | `[ -n "${VAR:-}" ]` for `DATABASE_URL`, `NEON_DATABASE_URL`, `POSTGRES_URL`, `SUPABASE_DB_URL` | **all missing** |
-| Repo env files | `ls .env* web/.env*` | `.env.example`, `.env.local`, `web/.env.local` only |
-| Key presence in `.env.local` | key-name listing via `cut -d= -f1` | `APP_ENV`, `APP_ORIGIN`, `SUPABASE_AUTH_URL`, `SUPABASE_AUTH_ANON_KEY`, `MEDIA_PROVIDER_ADAPTER`, `LOG_LEVEL` — **no `DATABASE_URL`** |
-| Key presence in `web/.env.local` | same | identical: auth keys only, **no `DATABASE_URL`** |
-| Schema sources | `db/drizzle.config.ts` | `schema: []` — no module has a schema file yet |
-| Migrations | `ls db/migrations` | directory does not exist (the identity slice owns the first) |
-| Migration tool | `npm run db:generate` | exits 1 with "no schema files" — by design, recorded since TASK-005 |
+## 2. Database verification (real branch, never production)
 
-Why this cannot be worked around inside the task's permissions:
+Connection identity was checked through Neon's own session settings, without
+printing the connection string:
 
-- **Provisioning Neon is a paid-infrastructure decision.** `DECISION_REGISTER.md`
-  D-013 records "Neon primary DB, Supabase Auth, Cloudinary initial media" as
-  **RECOMMENDED DIRECTION**, not CONFIRMED. AGENTS.md requires human approval for
-  paid services, and the spec forbids "paid infrastructure".
-- **Switching the store to the existing Supabase project's Postgres** would
-  silently overturn a recorded architecture decision and would require pulling a
-  database credential out of the provider, which this mission is not authorised
-  to do (no secret handling, no Auth-settings changes).
-- **A local throwaway Postgres** would prove nothing about Neon, and the spec
-  explicitly requires the real persistence path (§8: "Test actual Neon
-  persistence … clearly separate live integration tests from mocks").
+| Check | Result |
+| --- | --- |
+| `current_setting('neon.branch_id')` | `br-steep-field-b3nti5ov` (the isolated branch) |
+| `current_setting('neon.project_id')` | `ancient-band-38052550` |
+| `current_database()` | `neondb` |
+| Server version | PostgreSQL 18.6 |
+| State before migration | 0 user tables, no Drizzle history |
 
-## 3. Design-reference audit (spec §2)
+`npm run db:migrate` **exit 0** — "migrations applied successfully".
 
-**Limitation, recorded as the spec instructs rather than asking the owner to
-re-upload:** `/mnt/data/image_471bde6f.jpg` and `/mnt/data/image_d8ec3e9b.jpg`
-do not exist in this container — `/mnt` exists but is empty — and the repository
-contains no design images at all:
+`node scripts/profile-live-check.mjs` — **12/12 checks passed**, exit 0:
 
-- `find . -iname '*.jpg' -o -iname '*.png' -o -iname '*.webp'` → zero results in
-  tracked source; the only image that ever existed was TASK-006C's untracked
-  `artifacts/006c-login.png`, which was removed with that work.
-- `git grep -iE '471bde6f|d8ec3e9b|design board|reference board|mockup'` →
-  `docs/REPOSITORY_ASSESSMENT.md:72` (records that six mockups were supplied to
-  an earlier agent) and `docs/adr/0002` (a reference to the blueprint's mockup
-  set). No image bytes are committed anywhere.
-- No canonical copy exists under any design/asset/reference/mockup directory,
-  because no such directory exists.
+- migration created `public.profiles`; enum is exactly `public,private`;
+- onboarding inserts exactly one profile, and a retried onboarding inserts none;
+- 8 identities racing for one handle → **1 created / 7 unique violations**;
+- an update survives a **new connection** (real persistence, not a cache);
+- a non-canonical handle is rejected by the CHECK constraint (`23514`);
+- an unsupported visibility value is rejected by the enum (`22P02`);
+- every row the run created is deleted again — **0 remaining**.
 
-Consequence: **no claim of design fidelity is made.** What follows is an audit
-mapping from the *spec's written description* of the boards to existing code —
-it is a plan, not fidelity evidence, and it must be re-verified against the
-images once they are committed.
+Rollback / forward recovery: the migration is additive (one table, one enum,
+three indexes). Forward recovery is `npm run db:migrate`. Rollback is
+`DROP TABLE profiles; DROP TYPE profile_visibility;` on the isolated branch
+only — never on production, and not needed unless the slice is withdrawn.
 
-### 3.1 Design mapping (description → implementation location)
-
-| Reference cue (spec §2) | Existing expression in this repo | Where the profile slice must apply it |
-| --- | --- | --- |
-| Dark navy background and surfaces | `bg-bg` page, `bg-surface` cards, `border-border` — `packages/design-tokens` navy scale | New profile/onboarding pages must reuse `bg-bg` / `bg-surface`, not new colours |
-| Mint/teal accent and active-tab treatment | `tone="primary"` on `Badge`/`Button`; mint `primary` token; `Tabs` active state | Edit Profile / Save buttons, active tab underline, availability "taken/free" states |
-| Compact top bar with settings and Edit Profile | `web/src/components/shell/Sidebar.tsx` (desktop) + `BottomNav` (mobile); no profile-local top bar yet | Add a profile header bar with "Edit profile" + settings link; keep the shell untouched |
-| Centered avatar, identity, short bio | `Avatar` (`size="xl"`, `seed`, `demo`), `h1` display name, `@handle`, `text-ink-muted` bio in `ProfileView` | Reuse the same block, but with real values and no `demo` badge once the DB backs it |
-| Following/follower/like statistics | `dl` of posts/followers/following, each literally labelled `(demo)` | Keep the shape; render **honest** values (0 / "not available yet") until TASK-008–010 implement them |
-| Horizontally switchable content area/tabs | `Tabs` component (Posts / About / Media) with `role="tabpanel"` | Keep tabs; posts/media panels become empty states, not fake content |
-| Cover band | `demo-cover` utility class | Replace with a plain navy/token gradient when the profile is real; do not import demo styling |
-| Reserved, not-built actions | Follow/Message use `aria-disabled="true"` + `aria-describedby` hint | Copy this exact pattern for any action whose backing feature is unimplemented |
-
-## 4. Existing behaviour audited and to be preserved
-
-- **Identity authority:** `web/src/server/auth/supabase-session.ts` verifies
-  through Supabase Auth `/auth/v1/user` and fails closed; `SupabaseSessionSource`
-  reads the bearer header, then the HttpOnly cookie. Roles come only from the
-  verified source (`web/src/server/auth/session.ts`).
-- **Authorisation:** `web/src/server/authz/index.ts` —
-  `requireAuthenticatedUser`, `requireOwnership` (uniform denial, no existence
-  oracle), `requireRole`. Deny-by-default.
-- **Route contract:** `web/src/server/http/handler.ts` — `createApiRoute` gives
-  session resolution, Zod validation (field names only in errors), per-identity
-  rate limiting and uniform error mapping. New profile routes must use it, not a
-  bespoke handler.
-- **Rate limiting:** `web/src/server/ratelimit.ts`, configured through
-  `RATE_LIMIT_MAX_PER_WINDOW` / `RATE_LIMIT_WINDOW_SECONDS` — the spec requires it
-  on username availability and profile mutations.
-- **DB boundary:** `web/src/server/db/client.ts` — lazy `pg.Pool` +
-  `drizzle-orm/node-postgres`, parameterised access only, `getDb()` throws a
-  value-free error when `DATABASE_URL` is absent. `web/src/server/env.ts` treats
-  `DATABASE_URL` as optional in development and required elsewhere, listing
-  variable **names** only on failure.
-- **Module pattern:** `web/src/modules/example-owned-resource/service.ts` is the
-  reference service (verified session → deny → ownership check → service-owned
-  data access). Its header states it must be deleted or replaced when the first
-  real module lands — the profile slice is that module.
-- **Demo profile surface:** `web/src/components/profile/ProfileView.tsx` plus
-  `web/src/app/u/[handle]/page.tsx` and `b/[handle]`, statically prerendered from
-  `web/src/lib/demo-content.ts` with `generateStaticParams`. A real
-  username-resolvable route must coexist with, or explicitly retire, these demo
-  routes — discovery surfaces link to them today.
-- **Owner-confirmed live auth:** the spec records the owner's successful
-  test-account sign-in/sign-out on Preview
-  `dpl_7CWeXAL4gQPWbD2ovnSTosNG92Rq` (`https://synergy-1ayluu193-drop2.vercel.app`,
-  branch `task/TASK-006C-…`, commit `6a10d64`). This is owner-observed evidence,
-  not an automated test. Note for future agents: anonymous access to that URL is
-  still gated by Vercel Authentication (`302` → `vercel.com/sso-api`, API
-  `401 "Protected deployment"` — `handoff/TASK-006C.md` §4.1), so no agent can
-  re-run the owner's check unattended.
-
-## 5. What was not built (and why), against spec §4
-
-| Spec area | Status | Reason |
-| --- | --- | --- |
-| A. Database and identity linkage | **NOT STARTED** | No database (B-8); migration cannot be generated, applied or rolled back |
-| B. Onboarding | **NOT STARTED** | Depends on A; availability checks need the unique index as authority |
-| C. Profile view and edit | **NOT STARTED** | Depends on A; persistence is the acceptance criterion |
-| D. Privacy foundation | **NOT STARTED** | Must be enforced in the data-access layer, which does not exist yet |
-| E. Design fidelity and responsive | **NOT STARTED** | Board images unavailable (B-9); nothing to render |
-| Gates / browser checks | Documentation gates only | No product code changed |
-
-No file outside `handoff/` and the task file changed in this mission. No schema,
-migration, route, component, dependency, environment variable or database
-operation was added, attempted or applied.
-
-## 6. Quality gates actually run
+## 3. Gates actually run (final tree)
 
 | Command | Exit | Result |
 | --- | --- | --- |
-| `npm run format:check` | 0 | "All matched files use Prettier code style!" |
+| `npm run format:check` | 0 | clean |
 | `npm run lint` | 0 | clean |
-| `npm run typecheck` | 0 | all workspaces clean |
-| `npm test` | 0 | **22 files / 158 tests passed** — the TASK-006C suite, unchanged; no profile test exists yet |
-| `npm run build` | 0 | Next production build succeeds |
-| `npm run secret-scan` | 0 | no credential patterns in tracked blobs |
-| `npm run check:boundaries` | 0 | import boundaries hold |
-| `npm run verify` | 0 | aggregate passes; audit reported as advisory, not a pass |
-| `npm run db:generate` | 1 | expected: no schema files exist yet (unchanged since TASK-005) |
-| `npm run check:responsive` | 2 — **NOT RUN** | Playwright cannot start in this VM (missing `libnspr4`/`libnss3`, no root); documented in TASK-006C, never reported as a pass |
+| `npm run typecheck` | 0 | all workspaces |
+| `npm test` | 0 | **25 files / 199 tests passed** |
+| `npm run build` | 0 | Next production build; new routes present |
+| `npm run verify` | 0 | aggregate: all required gates passed |
+| `npm run secret-scan` | 0 | clean, 215 tracked files |
+| `npm run check:boundaries` | 0 | clean, 88 files |
+| `npm run db:generate` | 0 | 1 table, 9 columns, 3 indexes |
+| `npm run db:migrate` | 0 | applied to the isolated branch |
+| `npm run check:responsive` | 2 — **NOT RUN** | Playwright cannot start in this VM (no Chromium system libraries, no root). Not a pass, and no viewport claim is made |
+| `npm audit --audit-level=high` | 1 | **19 advisories (2 critical, 3 high, 14 moderate)** — the pre-existing B-5 set, unchanged by this task |
 
-All eight required gates passed on this tree (`verify` exit 0, "audit
-advisories are known and documented (not a pass)"). `npm audit --audit-level=high`
-remains exit 1 with the pre-existing B-5 advisories, unchanged by this mission.
-Nothing here is claimed as live integration evidence.
+New tests: `tests/profile-domain.test.ts`, `tests/profile-service.test.ts`,
+`tests/profile-routes.test.ts`, plus `tests/helpers/profile-double.ts`
+(a labelled in-memory repository double). They cover unauthenticated access,
+user A vs user B, tampered bodies, private-profile 404s, username normalisation
+and collisions, onboarding idempotency, rate limiting and DTO allowlists.
+**Mock vs live is stated explicitly**: the suites use doubles; persistence is
+proved only by the live script above.
 
-## 7. Security and privacy review
+## 4. HTTP behaviour verified (dev server and production server)
 
-- No secret value was read, printed, committed or logged; every environment
-  check was a presence test on a variable name, and env files were inspected by
-  **key name only**.
-- No database connection was attempted, so no production data was touched and no
-  experimental migration exists anywhere.
-- No auth change: Supabase remains the sole identity authority; session, CSRF,
-  cookie and ownership boundaries are untouched.
-- No account, user, role or Auth setting was created or modified; the owner's
-  test account was not used or referenced beyond what the spec already records.
-- This document contains no user data, email address, token or connection
-  string.
+| Path | Dev | Production (`next start`) |
+| --- | --- | --- |
+| `/u/<public handle>` | 200, bio rendered, `identityId` absent from payload | 200, bio present, `identityId` 0 occurrences |
+| `/u/<private handle>` (stranger) | 404 | 404, private bio 0 occurrences |
+| `/u/<demo handle>` | 200 (demo labelling intact) | 200 |
+| `/u/<unknown>` | 404 | 404 |
+| `/onboarding`, `/profile` (signed out) | 307 → `/login?next=…` | same |
+| `GET /api/v1/profiles/<public>` | `{profile:{username,displayName,bio,avatarUrl},isOwner:false}` | same |
+| `GET /api/v1/profiles/<private>` | 404 `{"error":{"code":"not_found"}}` | same |
 
-## 8. Blockers and owner actions
+### Privacy finding worth carrying forward
 
-1. **B-8 (P0, blocks everything):** provide an isolated **non-production**
-   Postgres. D-013 proposes Neon (recommended, not confirmed) — provisioning it
-   is a paid-service decision that needs explicit approval; any equivalent
-   serverless Postgres is acceptable if the owner prefers. Expose it as
-   `DATABASE_URL` in approved secret storage (and in `web/.env.local` for local
-   runs, which is gitignored). Nothing else about this task needs a decision.
-2. **B-9 (P0 for §4E and §8.8):** commit the two reference boards into the
-   repository, e.g. `docs/design/image_471bde6f.jpg` and
-   `docs/design/image_d8ec3e9b.jpg`. One step, and every future UI task can then
-   cite a path instead of a description.
-3. **Optional:** relax Vercel Deployment Protection for previews so the
-   owner-confirmed sign-in can be independently re-verified by an agent.
+The first version of `/u/[handle]` passed the **repository record** into the
+view. Next's development async-debug channel serialises awaited server values,
+so the RSC payload of a *404* contained the private row — auth subject,
+timestamps and the `visibility: "private"` flag — even though the profile body
+was correctly withheld. Found by inspecting the rendered HTML, not by reading
+the code.
 
-## 9. Smallest next action
+Fixed in `3eb4217`: the loader converts to an allowlisted DTO *before* anything
+is returned, so no raw row exists as a value a renderer can serialise. Verified
+clean in production; development HTML can still contain awaited values from
+*inside* the service (a framework diagnostic, not a response contract), so
+**do not treat dev-server HTML as a privacy-safe artefact**.
 
-Approve and provision the development database, set `DATABASE_URL`, and commit
-the two boards. Stages A–E then run without further questions: schema →
-generated migration → repository/service → onboarding and profile APIs → UI →
-privacy and cross-user tests → browser checks at 360/414/1280/1440 → handoff.
+## 5. Design references — limitation (unchanged)
 
-## 10. Next task
+The two boards (`image_471bde6f.jpg`, `image_d8ec3e9b.jpg`) are still absent:
+`/mnt/data` does not exist in this container, and no image is committed
+anywhere in the repository. Per the spec, that is recorded rather than
+requested again — and **no design-fidelity claim is made**. What the UI applies
+is the spec's *written* description mapped onto existing tokens/components:
 
-**TASK-008 — Social Publishing**, per the spec's instruction (repo queue:
-`task/TASK-007A-content-publishing-ownership.md` covers publishing and
-`task/TASK-008-follow-graph-and-visibility.md` the follow graph). Both inherit
-B-8: neither can persist content without the same database.
+| Cue (spec §2) | Implementation |
+| --- | --- |
+| Navy background/surfaces | `bg-bg`, `bg-surface`, `border-border`; cover band is a token gradient (`from-primary/20 via-surface to-surface-raised`) |
+| Mint accent, active tab | `primary` token on the Edit button and `Tabs` underline; `Badge tone="primary"/"warning"` for You/Private |
+| Compact top action row | avatar + Edit profile (owner) or reserved Follow/Message (`aria-disabled` + `aria-describedby`) |
+| Centered avatar, identity, bio | `Avatar size="xl"` with a border in the page background, `h1`, `@handle`, bio or an honest empty line |
+| Statistics | Deliberately none: follower/like counts belong to the tasks that create them |
+| Content tabs | `Tabs` (About/Posts/Media) with real empty states |
 
+B-9 stays open: committing the boards is a one-step owner action that converts
+this table from a plan into reviewable evidence.
 
-## 11. Owner-approved database unblock update — 2026-11-08
+## 6. Security and privacy review
+
+- Identity comes only from the verified session (`requireAuthenticatedUser`);
+  no method accepts a user id from request data, and the request schemas are
+  strict, so a body carrying `identityId`/`userId` is a 400, not an assignment.
+- Ownership is enforced in the `WHERE` clause (`identity_id = verified user`),
+  so cross-user writes have no code path.
+- Private profiles are indistinguishable from missing ones (404), with no
+  error-message difference.
+- Public responses use an explicit allowlist; the auth subject, internal id,
+  timestamps and visibility never reach an anonymous caller.
+- Mutations require a same-origin `Origin` (CSRF), are rate limited, and return
+  field **names** only on validation failure. Logs carry no bio/avatar values.
+- The connection string was never printed, committed or logged; `.env.local`
+  was not modified (the platform already exports `DATABASE_URL`). No secret was
+  added to the repository, and `scripts/profile-live-check.mjs` reads the URL
+  from the environment only.
+- No Supabase Auth setting, user, role or password was created or changed; no
+  `service_role` key is used anywhere; nothing ran against production.
+
+## 7. Known limitations
+
+1. **No browser viewport pass**: `check:responsive` cannot run here, so
+   360/414/1280/1440 rendering is **not verified**; only server-rendered HTML
+   and status codes were checked. Layout was built with the existing
+   mobile-first patterns but has not been seen in a browser.
+2. **No agent-run signed-in flow**: exercising onboarding end to end requires a
+   real session, which the owner holds. The API path is covered by route tests
+   with a labelled session double, and the pages redirect correctly when signed
+   out.
+3. **Avatar is a URL field only** — not rendered as an image (no uploads, no
+   `next/image` remote pattern). Initials stand in, and the form says so.
+4. **Visibility is binary** (`public`/`private`). Follower-scoped visibility
+   returns with the follow graph.
+5. **Account deletion / erasure** is out of scope; deleting an Auth user does
+   not cascade to `profiles`.
+6. **Rate limiting is per-process in-memory**, like every limiter in this
+   foundation — documented at the boundary, not a distributed control.
+
+## 8. Files changed
+
+Created: `web/src/modules/profile/{schema,repository,service,provider}.ts`,
+`web/src/app/api/v1/profile/route.ts`,
+`web/src/app/api/v1/profile/onboarding/route.ts`,
+`web/src/app/api/v1/profile/username-availability/route.ts`,
+`web/src/app/api/v1/profiles/[username]/route.ts`,
+`web/src/components/profile/{MemberProfileView,ProfileForm}.tsx`,
+`web/src/app/onboarding/page.tsx`, `web/src/app/profile/page.tsx`,
+`web/src/app/profile/edit/page.tsx`,
+`db/migrations/0000_nappy_vapor.sql` (+ `meta/`),
+`tests/{profile-domain,profile-service,profile-routes}.test.ts`,
+`tests/helpers/profile-double.ts`, `scripts/profile-live-check.mjs`.
+
+Modified: `packages/domain/src/users-and-profiles.ts`,
+`packages/domain/test/contracts.test.ts`, `web/src/app/u/[handle]/page.tsx`,
+`web/src/app/account/page.tsx`, `web/src/server/http/errors.ts` (adds the
+`conflict`/409 code), `web/next.config.mjs` (webpack `extensionAlias` so the
+client graph can resolve the domain package's `.js` specifiers),
+`db/drizzle.config.ts` (schema glob, `db/migrations`, env-supplied credentials),
+`db/README.md`, this handoff, the task file and `handoff/CURRENT_STATUS.md`.
+
+No dependency was added or upgraded.
+
+## 9. Next task
+
+**TASK-008 — Social Publishing** (repo queue also holds
+`task/TASK-007A-content-publishing-ownership.md` and
+`task/TASK-008-follow-graph-and-visibility.md`). It inherits a working
+persistence pattern: module schema → generated migration → repository →
+service → wrapped route → allowlisted DTO. Reuse it; do not invent a second
+data-access shape. B-9 (design boards) and B-5 (dependency majors) remain open.
+
+## 10. Owner-approved database unblock — 2026-11-08 (historical)
 
 The earlier B-8 statement is superseded. An existing Neon project named **Synergy** was found in the connected account (project ID `ancient-band-38052550`, PostgreSQL 18, database `neondb`). The production branch was left untouched.
 
