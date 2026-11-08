@@ -41,10 +41,6 @@ export function Sidebar({ authState }: { authState?: AuthNavState }) {
         SYNERGY
         <span className="sr-only">— home</span>
       </Link>
-      <p className="mt-1 px-2 text-[11px] uppercase tracking-wide text-ink-muted">
-        Ibadan · prototype
-      </p>
-
       <nav aria-label="Primary" className="mt-8">
         <ul className="space-y-1">
           {PRIMARY_NAV.map((item) => {
@@ -108,9 +104,6 @@ export function Sidebar({ authState }: { authState?: AuthNavState }) {
         <p className="rounded-md border border-border bg-bg/60 p-3 text-[11px] leading-5 text-ink-muted">
           Prototype build. Profiles and posts are fictional demonstrations — no
           account, message or listing is stored.
-        </p>
-        <p className="text-[11px] text-ink-muted">
-          Dark navy · Mint · Ibadan-first
         </p>
       </div>
     </aside>
