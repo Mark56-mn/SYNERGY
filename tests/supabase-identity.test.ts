@@ -25,9 +25,11 @@ import {
  *   - tokens never leak into logs, responses or thrown values;
  *   - client-asserted identity and roles are never merged in.
  *
- * They do NOT prove live integration against a Supabase project: no
- * credential exists in this environment yet (see the TASK-006A handoff). A
- * passing run here must never be reported as "Supabase authentication works".
+ * They do NOT prove live integration against a Supabase project: the HTTP
+ * transport is stubbed, even though the implementation agent reports that
+ * project configuration and negative-path provider checks were exercised
+ * separately. A passing run here must never be reported as "Supabase
+ * authentication works"; the positive real-user path remains B-7b.
  */
 
 const USER_ID = "5f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b";
