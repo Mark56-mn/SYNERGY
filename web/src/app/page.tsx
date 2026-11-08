@@ -27,7 +27,7 @@ export default function HomePage() {
   return (
     <div>
       <section className="px-4 pb-4 pt-5 sm:px-5">
-        <Badge tone="primary">Ibadan · foundation build</Badge>
+        <Badge tone="primary">Connect · create · grow</Badge>
         <h1 className="mt-3 text-2xl font-bold leading-tight tracking-tight text-ink">
           People, creators and services — connected
         </h1>
