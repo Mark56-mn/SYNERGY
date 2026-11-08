@@ -13,7 +13,7 @@ export default function CommunitiesPage() {
           Communities
         </h1>
         <p className="mt-1 text-sm leading-6 text-ink-muted">
-          Working groups for trades, creators and local business in Ibadan.
+          Spaces for people to connect around shared interests, skills and work.
           Public communities are open to read; private communities show their
           rules and require approval to join.
         </p>
