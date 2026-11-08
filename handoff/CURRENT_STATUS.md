@@ -82,3 +82,8 @@ TASK-003 code commits and this handoff are pushed to `chore/autonomous-foundatio
 3. Implement the profile schema/migration, secure Supabase Auth linkage, idempotent onboarding, profile view/edit and public/private read rules with tests and design fidelity evidence.
 4. Update `handoff/TASK-007.md` and this status file after the task; hand off TASK-008 Social Publishing. Do not begin TASK-008 in the same mission.
 5. Keep B-5 dependency-major triage separate; do not perform broad breaking upgrades in TASK-007.
+
+
+## TASK-007 owner-approved unblock update — 2026-11-08
+
+The earlier B-8 "no database provisioned" assessment is superseded. An existing Neon project **Synergy** was found (project `ancient-band-38052550`, PostgreSQL 18, database `neondb`). An isolated branch `task-007-member-identity-profiles` (ID `br-steep-field-b3nti5ov`) was created and verified **ready**, from the existing production branch HEAD. No schema/data changes were applied to production or the task branch. A pooled connection string was generated for the task branch; its privileged value is not stored in this repository or chat. Remaining owner step: add that URI as `DATABASE_URL` through FreeBuff's secure secret UI and make it available to local web commands via gitignored `web/.env.local`. Never place it in a mission prompt, source, GitHub or logs. Confirm branch ID before migrations. The original design boards are available in the ChatGPT project working files but are not yet accessible to the FreeBuff container/repository; retain that as an inspection limitation until they are provided to the agent. Resume TASK-007 §4A after the secure environment is configured. Production, main and Vercel Production remain untouched.
