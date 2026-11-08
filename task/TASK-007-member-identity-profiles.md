@@ -233,3 +233,22 @@ browser libraries, no root). Handoff: `handoff/TASK-007.md`.
 2. Commit the two reference boards under `docs/design/`.
 
 Then §4A–§4E can proceed as specified, with no further decisions required.
+
+
+## 11. Owner-approved unblock update — 2026-11-08
+
+The prior §10 blocker assessment is historical and has been superseded for database provisioning. The connected Neon account contains the existing project **Synergy** (project `ancient-band-38052550`), PostgreSQL 18, database `neondb`. The project has an existing production branch (`br-damp-butterfly-b3f0r4v8`); that branch was not modified.
+
+With owner approval to proceed, an isolated task branch was created from the production branch HEAD:
+- Branch: `task-007-member-identity-profiles`
+- Branch ID: `br-steep-field-b3nti5ov`
+- State: **ready**
+- Compute: 0.25 CU min / 0.25 CU max
+- No schema or data changes have been applied.
+- A pooled PostgreSQL connection string was generated for this task branch. Its privileged value is intentionally not recorded in this repository, handoff, chat, or logs.
+
+**Remaining connection step:** add the task-branch connection string as `DATABASE_URL` in the FreeBuff agent's approved secret/environment-variable store, and make it available to local web commands as `web/.env.local` (gitignored). Never paste the value into a mission prompt, source file, GitHub, or chat. Do not use the production branch connection string. If the runtime cannot receive secrets securely, stop and ask the owner to add it through FreeBuff's secret UI.
+
+**Design references:** the two original boards are available in the current ChatGPT project working files, but are not yet present in the FreeBuff container or tracked repository. Do not claim they have been inspected by the agent until the agent can open them. Preserve B-9 as a design-access blocker; use the repo's documented design tokens meanwhile and do not invent fidelity claims.
+
+Next: once the owner has securely added `DATABASE_URL` to FreeBuff, resume at §4A. Verify connectivity without printing the URL or credentials, confirm the branch identity is `br-steep-field-b3nti5ov`, generate and test migrations only on that isolated branch, and continue the TASK-007 vertical slice. Do not run schema changes on `production`, change Supabase Auth, merge to `main`, or promote Production.
