@@ -1,8 +1,8 @@
 # TASK-006 — Identity and profile persistence planning handoff
 
 - **Task ID / title:** TASK-006 — Identity and profile persistence
-- **Status:** BLOCKED — planning document prepared; implementation has not started.
-- **TASK-006A status (2026-11-07):** **PARTIAL** — server-side Supabase verification implemented and tested; live provider binding blocked on B-7 (`SUPABASE_AUTH_URL` / `SUPABASE_AUTH_ANON_KEY` absent). See the implementation record at the end of this file.
+- **Status:** TASK-006A **PARTIAL**; TASK-006B **BLOCKED / not started**.
+- **TASK-006A status (updated 2026-11-08):** server-side Supabase bearer-token verification is implemented and covered by 12 transport-stubbed tests. The implementation agent reports Auth URL/anon-key configuration and provider reachability/forged-token rejection as live-checked. A successful real-user token/session round trip remains unverified (B-7b). Sign-in/sign-up, cookie sessions, CSRF and logout are not implemented. See the implementation record below.
 - **Branch:** `chore/autonomous-foundation-v1`
 - **Planning base:** `f58fdfbc4acb8321a0c6b503eacbb15de2ac4823`
 - **Commit:** pending this planning-only record.
@@ -18,18 +18,18 @@ The complete scope, non-goals, security rules, acceptance criteria, test plan, r
 
 ## Current implementation state
 
-No application code, dependencies, schema, migrations, provider configuration or credentials were changed. The current `SupabaseSessionSource.verify()` remains a non-live boundary that returns null until the identity slice is implemented. Demo profile content remains fictional and labelled.
+TASK-006A changed application code in three files (a new verifier, composition-root update and new tests); it added no dependency, schema or migration. The bearer-token path calls Supabase Auth server-side and fails closed. The implementation agent reports the Auth variable names are present in approved environment secrets and provider reachability/forged-token rejection were live-checked. This review has not independently repeated those network checks. A positive real-user token has not been verified. Demo profile content remains fictional and labelled.
 
-> Superseded for TASK-006A only by the implementation record below (2026-11-07). TASK-006B remains exactly as described here: nothing started.
+TASK-006B remains not started and blocked. The earlier planning-only statements below are historical planning context, not the current implementation state.
 
 ## Blocking conditions
 
-1. G-2 owner provisioning is not evidenced as complete.
-2. The owner must explicitly release TASK-006A for implementation after provisioning.
-3. TASK-006B depends on TASK-006A being implemented and reviewed.
+1. **B-7b positive-path verification remains open:** no successful real-user token/session round trip has been evidenced. Obtain an owner-confirmed test user's short-lived token through an approved out-of-band secret channel, or request separate explicit approval for a test-account creation procedure.
+2. **TASK-006B remains blocked:** requires successful positive-path verification and review of TASK-006A, plus `DATABASE_URL` in approved secret storage.
+3. Do not create users, change Auth settings, enable email auto-confirm, use `service_role`/`sb_secret`, or implement cookie/sign-in/logout flows without explicit scope approval.
 4. B-5 dependency-major decisions and G-5 CI selection remain separate unresolved items.
 
-No accounts were created, no paid services used, no secrets requested or exposed, no deployment performed, and no merge to `main`.
+No accounts were created, no paid services used, no secret values recorded in GitHub/chat, no deployment performed, and no merge to `main`. Auth variable names are reported present in approved environment secrets.
 
 ## Security and privacy
 
@@ -45,7 +45,7 @@ No build/test command was run because this was a planning-only GitHub documentat
 
 ## Next action
 
-Owner completes G-2 using free-tier development services and environment secret storage, then explicitly authorises TASK-006A. Only after TASK-006A review may TASK-006B begin.
+TASK-006A has already been explicitly authorised and partially implemented. The next gate is B-7b: verify a real user's short-lived token through the existing protected route, without creating accounts or changing Auth settings unless separately approved. Independently review the verifier and rerun the documented local gates. Only after positive-path verification and code review pass, and `DATABASE_URL` is available in approved secret storage, may TASK-006B be proposed for release.
 
 ---
 
@@ -63,10 +63,7 @@ verifies the caller's token through Supabase Auth's own `/auth/v1/user` endpoint
 issuer, audience, expiry and revocation judged by the provider. No hand-rolled cryptography,
 no second password store, no service-role key.
 
-**Not live-verified.** The environment contains a Supabase **Postgres connection string**,
-not Auth API configuration. `SUPABASE_AUTH_URL` and `SUPABASE_AUTH_ANON_KEY` are absent, so
-sign-in, sign-out, cookie sessions and any end-to-end flow against the real project were not
-built: that would have been unverifiable code claiming an integration it never exercised.
+**Positive path not verified.** At implementation time the Auth API variables were initially absent, so sign-in/sign-out/cookie-session flows were not built. The owner subsequently added `SUPABASE_AUTH_URL` and `SUPABASE_AUTH_ANON_KEY` to approved environment secrets and refreshed the ignored app environment file. The implementation agent reports live provider reachability and forged-token rejection, but a successful real-user session has not been tested. This review has not independently reproduced the provider network calls.
 
 ## Environment verification (names only)
 
@@ -79,9 +76,7 @@ built: that would have been unverifiable code claiming an integration it never e
 | `NEON_CONNECTION_STRING` | no — 006B owns it | present |
 | `CLAUDENARY_CREDENTIALS` | no — Cloudinary, out of scope | present |
 
-The three provider values exist under **arbitrary secret names**; the app reads fixed names
-(`.env.example`, ADR-0007), so `SUPABASE_CONNECTION_STRING` is never read as
-`SUPABASE_AUTH_URL`.
+The application reads the fixed names `SUPABASE_AUTH_URL` and `SUPABASE_AUTH_ANON_KEY` (see `.env.example` and ADR-0007). Postgres DSN variables are distinct and are not substitutes for the Auth API URL/key. Do not print or copy secret values into this handoff.
 
 ### Blocker B-7 — **URL and key resolved; positive-path session still pending**
 
@@ -119,10 +114,7 @@ token can be supplied out-of-band, or explicit approval to create a test user (w
 project auth state and is therefore not done unilaterally). Do **not** work around this with a
 `service_role` key.
 
-Owner follow-up **done 2026-11-07**: both names are now exported by the environment
-(Settings → Secrets) and were confirmed present by name only, so a restored workspace picks
-them up; `.env.local` and `web/.env.local` are refreshed from the environment on request.
-Supply the Neon DSN as `DATABASE_URL` when TASK-006B starts.
+Owner follow-up **reported complete 2026-11-07**: both Auth variable names are exported by the environment (Settings → Secrets) and were confirmed present by name only. The implementation agent reports `.env.local` and `web/.env.local` were refreshed from the environment. Supply the Neon DSN as `DATABASE_URL` only after TASK-006B is separately released.
 
 ### Incident disclosure
 
@@ -192,8 +184,7 @@ Covered: provider-accepted token → provider id; provider 401/500 → `null`; t
 non-Bearer scheme; empty Bearer; rejected token; verified token → `["member"]`; distinct
 tokens → distinct users; crafted body/query identity ignored.
 
-**NOT RUN (not claimed as passing):** `npm run check:responsive` (no UI source change; dev
-server not started this turn) and `npx expo export --platform android` (no Android change).
+**NOT RUN (not claimed as passing for TASK-006A):** `npm run check:responsive` (no UI source change; dev server not started) and `npx expo export --platform android` (no Android change). Earlier TASK-005 responsive and TASK-003/TASK-005 Android export evidence is historical, not a fresh TASK-006A run.
 
 ## Known limitations
 
@@ -220,5 +211,4 @@ That dashboard-token check is the step that converts "implemented" into "live-ve
 
 ## Next
 
-TASK-006B stays blocked: it needs this task live-verified plus `DATABASE_URL`. Its first
-migration keys profiles by the `supabase_user_id` this verification now produces.
+TASK-006B stays blocked: it needs successful positive-path real-user token verification and independent code review, plus `DATABASE_URL` in approved secret storage and a separate task release. Its first migration should key profiles by the verified `supabase_user_id` produced by this boundary. No schema work is authorised by this handoff update.
