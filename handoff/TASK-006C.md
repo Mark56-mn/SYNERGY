@@ -2,21 +2,22 @@
 
 - **Task ID / title:** TASK-006C — Deployment and Experience Consistency
 - **Status:** **PARTIAL (2026-11-08).** Code and gates complete; **Workstream A
-  (deployment verification) BLOCKED** — no Vercel access exists in this
-  environment; live positive sign-in still **BLOCKED on B-7b**.
+  BLOCKED** — the owner's preview URL is now known but sits behind Vercel
+  Authentication and still cannot be tied to a commit from this environment;
+  live positive sign-in **BLOCKED on B-7b**.
 - **Branch:** `task/TASK-006C-deployment-experience-consistency` (never merged
   into `main`, never promoted to Production)
 - **Starting commit:** `c312829` (task specification commit, base `a5766de`)
 - **Implementation commit:** `0e97fa8` (`fix(web): always render auth forms on
   unconfigured builds`)
-- **Docs commit:** this commit (handoff + task + CURRENT_STATUS)
+- **Docs commit:** `6a10d64` (`docs(task): record TASK-006C implementation, evidence and blockers`)
 - **Objective:** one consistent, truthful Nigeria-first preview experience.
 
 ## 1. Mission status
 
 | Workstream | Status | Why |
 | --- | --- | --- |
-| A — deployment investigation | **BLOCKED** | No Vercel session, no `.vercel/` linkage, no `VERCEL_*` variables in this environment. No preview URL, deployment ID or branch/commit relationship can be established without owner access. |
+| A — deployment investigation | **BLOCKED (URL known, still unverifiable)** | Owner supplied `https://synergy-1ayluu193-drop2.vercel.app`. It is guarded by Vercel Authentication: every path answers `302` to `vercel.com/sso-api` and the API returns `401 "Protected deployment"`, so neither an anonymous visitor nor this session can load the app. No deployment ID or branch/commit mapping is obtainable without Vercel access. |
 | B — branding and demo-content cleanup | **PASS** | Zero forbidden location strings in any user-facing source tree; regression scan added. |
 | C — authentication experience | **PASS for rendering/validation; PARTIAL for live sign-in** | Forms always render, are fully labelled and validated in a real browser; live negative path verified against the real provider. Live *positive* sign-in remains unverifiable (B-7b: zero Auth users, no test account). |
 | D — homepage, navigation, feature states | **PASS** | Home/nav/composer copy is truthful and city-free; composer still preview-only and never claims a publish. Sidebar notice reworded to match the auth reality. |
@@ -116,6 +117,38 @@ the recording predates `a5766de`/`7b48957`, or it shows a preview built from a
 branch that does not contain those commits — e.g. the Production branch, or an
 older preview URL left open in the browser. This cannot be confirmed without
 deployment history access, so it is stated as a hypothesis, not a finding.
+
+### 4.1 Owner-supplied preview URL, probed (2026-11-08)
+
+The owner later supplied `https://synergy-1ayluu193-drop2.vercel.app/account`.
+It was probed read-only, with no credentials and no secret value:
+
+| Probe | Result |
+| --- | --- |
+| `GET /account` | `302` → `https://vercel.com/sso-api?url=…` plus a `_vercel_sso_nonce` cookie — **not** the app's own `307` → `/login` |
+| `GET /login`, `/register`, `/` | `302` with a 263-byte body each; the app never rendered |
+| `POST /api/v1/auth/login` (fake credentials) | `401 {"protection":{"vercel_auth_enabled":true},"error":{"message":"Protected deployment"}}` |
+| `GET /` headers | `server: Vercel`, `x-vercel-id: sfo1::…`; protection answers before Next.js, so no `x-vercel-cache`/`x-matched-path` |
+| Cloud browser, no Vercel session | `https://vercel.com/login?next=/sso-api?url=…` — a Vercel sign-in form |
+
+**Findings:**
+
+1. The deployment is real and serving HTTP, but **Vercel Authentication guards
+   the whole project**. The owner is signed into Vercel, so the owner sees a
+   working app; every evaluator, tester, reviewer or partner gets a Vercel
+   login form instead. No anonymous check of copy, layout, auth or API is
+   possible — including the acceptance checks this mission required.
+2. **The deployment still cannot be tied to this branch.** No response exposes
+   the Git branch or SHA (protection answers before the app), and
+   `x-vercel-id` carries only the edge region and a request id. Whether this
+   build contains `0e97fa8` is **unverified**. The owner's screenshot proves a
+   sign-in card with Email/Password renders; that card also ships in earlier
+   commits, so it is not evidence of this branch.
+3. **The reported "missing inputs" symptom is not visible on this URL.** The
+   screenshot shows `/account` → sign-in card with Email, Password, "Show",
+   "Sign in", "Forgot password?" and "Create an account". That is consistent
+   with the fix in `0e97fa8` **and** with the form-rendering branches of
+   `a5766de`/`7b48957`, so it is recorded as consistency, not proof.
 
 **Owner action to unblock (smallest step):**
 
@@ -222,6 +255,11 @@ remains the gate that covers pixel behaviour and it did **not** run.
 
 - No secret value was read, printed or committed; environment inspection was
   name-only.
+- **Incident requiring owner action:** the owner shared a screenshot
+  containing a real account email and password in plain text. No value was
+  copied, used, logged or committed, and no sign-in was attempted with it.
+  That password must be treated as compromised and rotated, and a personal
+  address should not become the project's test identity.
 - No auth architecture change: Supabase remains the sole identity authority,
   sessions stay in HttpOnly cookies, browser-supplied ids/roles are never
   trusted, and no second password store was added.
@@ -231,15 +269,21 @@ remains the gate that covers pixel behaviour and it did **not** run.
 
 ## 10. Blockers and owner actions
 
-1. **B-7b (unchanged, P0 for auth confidence):** provide an owner-approved
-   test account (`SUPABASE_TEST_EMAIL` / `SUPABASE_TEST_PASSWORD` in approved
-   secret storage, with a confirmed email address) so the live positive path
-   can be verified once. Do not enable auto-confirm and do not create users
+1. **B-7b (P0 for auth confidence):** provide an owner-approved **dedicated
+   test account** with a confirmed email, stored as `SUPABASE_TEST_EMAIL` /
+   `SUPABASE_TEST_PASSWORD` in approved secret storage, so the live positive
+   path can be verified once without any credential appearing in chat, a
+   screenshot or a command. Do not enable auto-confirm and do not create users
    for this.
-2. **Workstream A (new, P0 for the owner's viewing problem):** grant Vercel
-   access, or open Deployments in the dashboard and confirm/queue a preview
-   for branch `task/TASK-006C-deployment-experience-consistency` at commit
-   `0e97fa8`. Without that, no preview URL/deployment ID can be reported.
+2. **Workstream A (P0 for the owner's viewing problem):** the preview URL is
+   now known (`https://synergy-1ayluu193-drop2.vercel.app`) but is guarded by
+   Vercel Authentication. Either (a) relax Deployment Protection for previews
+   (Vercel → project → Settings → Deployment Protection) so the link is
+   shareable, or (b) accept that only signed-in Vercel team members can view
+   it. Then confirm in Deployments that the newest preview on
+   `task/TASK-006C-deployment-experience-consistency` is READY at `0e97fa8` or
+   later. This is a hosting/security setting, so it needs the owner's explicit
+   decision; this mission changed nothing about it.
 3. **B-5 (pre-existing):** 3 high / 2 critical advisories remain; they need a
    dedicated dependency mission, not an incidental upgrade here.
 

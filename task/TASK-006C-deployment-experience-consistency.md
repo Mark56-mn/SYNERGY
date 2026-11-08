@@ -1,8 +1,10 @@
 # TASK-006C — Deployment and Experience Consistency
 
 Status: **PARTIAL (2026-11-08)** — implementation, gates and browser verification
-complete; Workstream A (deployment verification) **BLOCKED** (no Vercel access)
-and live positive sign-in still **BLOCKED** on B-7b. See §"Implementation record".
+complete; Workstream A (deployment verification) **BLOCKED** (owner's preview URL
+is known but sits behind Vercel Authentication and cannot be tied to a commit
+here) and live positive sign-in still **BLOCKED** on B-7b. See
+§"Implementation record".
 Branch: `task/TASK-006C-deployment-experience-consistency`
 Base: `a5766de4415e419a50b8b85e3ad0232e7a96f2b6` (`fix/auth-forms-remove-ibadan-branding`)
 Starting commit (spec): `c312829` · Implementation commit: `0e97fa8`
@@ -141,10 +143,24 @@ submit; empty-submit validation produced `aria-invalid` and visible messages.
 Live negative sign-in against the real provider returned a generic 401 with no
 `Set-Cookie`.
 
-Not satisfied: no Preview deployment could be identified or produced — this
-environment has no Vercel session, no `.vercel/` linkage and no `VERCEL_*`
-variables (`npx vercel whoami` → "Logged out."). The acceptance criterion
-"a READY Preview tied to the final task-branch commit" is therefore unmet; the
-owner must open the project's Deployments page (or grant Vercel access) and
-confirm a preview for this branch at `0e97fa8`. Live positive sign-in remains
-unverified (B-7b: zero Auth users, no approved test account).
+Deployment evidence (owner-supplied URL, probed read-only, no credentials):
+`https://synergy-1ayluu193-drop2.vercel.app`. `GET /account` → `302` to
+`vercel.com/sso-api` with a `_vercel_sso_nonce` cookie; `GET /login`,
+`/register`, `/` → `302`, 263-byte bodies; `POST /api/v1/auth/login` →
+`401 {"protection":{"vercel_auth_enabled":true},"error":{"message":"Protected
+deployment"}}`; a real Chromium with no Vercel session lands on
+`vercel.com/login`. The preview is therefore **guarded by Vercel
+Authentication**: the owner sees a working app, while every evaluator, tester
+or reviewer sees a Vercel sign-in form.
+
+Not satisfied: (1) no Preview deployment can be identified, produced, or tied
+to this branch/commit — this environment has no Vercel session, no `.vercel/`
+linkage and no `VERCEL_*` variables (`npx vercel whoami` → "Logged out."), and
+the protection layer never exposes the deployed Git ref; (2) the owner's URL is
+not anonymously reachable, so the "one clearly identified URL showing the
+intended experience" criterion fails for anyone outside the Vercel team. The
+owner must relax Deployment Protection for previews (a hosting/security
+setting, not changed here) and/or confirm the READY preview at `0e97fa8` in
+Deployments. Live positive sign-in remains unverified (B-7b: zero Auth users,
+no approved dedicated test account); a personal password shared in chat was
+not used, repeated or stored and should be rotated.
