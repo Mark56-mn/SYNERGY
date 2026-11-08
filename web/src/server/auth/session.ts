@@ -52,13 +52,22 @@ export class SupabaseSessionSource implements SessionSource {
   constructor(
     private readonly client: {
       readBearerToken(request: Request): string | null;
+      /**
+       * Fallback token reader for browser sessions (HttpOnly cookie).
+       * The bearer header always wins when both are present; the cookie is
+       * only a fallback so existing token-based API clients keep working.
+       */
+      readAccessTokenFromCookie?(request: Request): string | null;
       /** Returns the Supabase Auth user id for a verified session token, or null. */
       verify(token: string): Promise<{ id: string } | null>;
     },
   ) {}
 
   async getSession(request: Request): Promise<Session | null> {
-    const token = this.client.readBearerToken(request);
+    const token =
+      this.client.readBearerToken(request) ??
+      this.client.readAccessTokenFromCookie?.(request) ??
+      null;
     if (!token) {
       return null;
     }

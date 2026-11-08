@@ -45,7 +45,24 @@ for (const file of files) {
     rel.startsWith("lib/");
   // app/api routes are server code by definition — they are NOT client-reachable.
   const isApiRoute = rel.startsWith("app/api/");
-  if (inClientLayer && !isApiRoute && SERVER_SIGILER.test(code)) {
+  // TASK-006B amendment: React Server Components are NOT client-reachable
+  // either — they render on the server and never enter the client bundle,
+  // and every src/server module carries the `server-only` marker, which
+  // makes any accidental client import a BUILD error in Next.js. Server
+  // Components under app/ (no "use client" directive) may therefore import
+  // server code (e.g. the session check in the root layout and the auth
+  // pages). A file under app/ WITH "use client" is client code and remains
+  // fully checked; components/ and lib/ remain fully checked.
+  const isServerComponent =
+    rel.startsWith("app/") &&
+    !isApiRoute &&
+    !/^\s*["']use client["']/.test(code);
+  if (
+    inClientLayer &&
+    !isApiRoute &&
+    !isServerComponent &&
+    SERVER_SIGILER.test(code)
+  ) {
     violations.push(
       `${rel}: client-layer file imports server-only code (ADR-0006).`,
     );

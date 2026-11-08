@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { BottomNav } from "@/components/ui/BottomNav";
 import { Icon } from "@/components/ui/Icon";
+import type { AuthNavState } from "@/lib/auth-nav";
 import { RightRail } from "@/components/shell/RightRail";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { DEMO_DISCLOSURE } from "@/lib/demo-content";
@@ -16,12 +17,24 @@ import { DEMO_DISCLOSURE } from "@/lib/demo-content";
  *   with safe-area padding.
  *
  * One layout, not two: the same components and content reflow between widths.
+ *
+ * `authState` comes from the root layout's server-side session check
+ * (provider-verified user id or `null`). It drives the sign-in/account
+ * affordances; the demo disclosure below it is unchanged and applies to the
+ * demonstration content, never to the real account surface.
  */
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  authState,
+}: {
+  children: ReactNode;
+  authState?: AuthNavState;
+}) {
+  const signedIn = Boolean(authState?.userId);
   return (
     <div className="min-h-dvh bg-bg">
       <div className="mx-auto flex w-full max-w-[1400px]">
-        <Sidebar />
+        <Sidebar authState={authState} />
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="safe-top sticky top-0 z-30 border-b border-border bg-bg/95 backdrop-blur lg:hidden">
@@ -33,13 +46,32 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Icon name="sparkles" className="h-4 w-4" />
                 SYNERGY
               </Link>
-              <a
-                href="/discover"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-ink-muted"
-                aria-label="Search and discover (opens Discover)"
-              >
-                <Icon name="search" className="h-4 w-4" />
-              </a>
+              <div className="flex items-center gap-2">
+                {signedIn ? (
+                  <Link
+                    href="/account"
+                    className="flex h-10 items-center rounded-full border border-border px-3 text-sm font-medium text-ink-muted"
+                    aria-label="Your account"
+                  >
+                    Account
+                  </Link>
+                ) : (
+                  <Link
+                    href="/login"
+                    className="flex h-10 items-center rounded-full border border-border px-3 text-sm font-medium text-ink-muted"
+                    aria-label="Sign in"
+                  >
+                    Sign in
+                  </Link>
+                )}
+                <a
+                  href="/discover"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-ink-muted"
+                  aria-label="Search and discover (opens Discover)"
+                >
+                  <Icon name="search" className="h-4 w-4" />
+                </a>
+              </div>
             </div>
           </header>
 
@@ -59,7 +91,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      <BottomNav />
+      <BottomNav authState={authState} />
     </div>
   );
 }

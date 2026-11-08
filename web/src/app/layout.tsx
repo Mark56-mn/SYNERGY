@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { ReactNode } from "react";
 
 import { AppShell } from "@/components/shell/AppShell";
+import { getCurrentSession } from "@/server/provider-access";
 import { tokens } from "@synergy/design-tokens";
 
 import "./globals.css";
@@ -22,14 +23,30 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+/**
+ * Root layout. Resolves the session cookie through the provider-verified
+ * path so navigation renders the correct signed-in/signed-out state on the
+ * first paint — no client-side flip, and no private content can flash
+ * before the check. This makes pages dynamic by design: personalized
+ * navigation requires a per-request auth check, which is the honest
+ * trade-off for a correct login experience.
+ */
+export default async function RootLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const session = await getCurrentSession();
+
   return (
     <html lang="en">
       <body className="min-h-dvh bg-bg text-ink">
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        <AppShell>{children}</AppShell>
+        <AppShell authState={{ userId: session?.userId ?? null }}>
+          {children}
+        </AppShell>
       </body>
     </html>
   );
