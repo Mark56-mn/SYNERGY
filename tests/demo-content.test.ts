@@ -37,6 +37,10 @@ describe("demonstration content invariants", () => {
     expect(CORPUS).not.toMatch(/https?:\/\//);
   });
 
+  it("contains no city-specific prototype branding or demo locations", () => {
+    expect(CORPUS).not.toMatch(/Ibadan|Bodija|Dugbe|Akobo|Jericho|Ring Road/i);
+  });
+
   it("uses only the supported community visibility values", () => {
     for (const community of DEMO_COMMUNITIES) {
       expect(["public", "private"]).toContain(community.visibility);
