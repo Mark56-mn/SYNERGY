@@ -1,6 +1,6 @@
 # TASK-006 — Identity and profile persistence
 
-Status: **TASK-006A PARTIAL (2026-11-07)** — server-side Supabase verification implemented and tested; live provider binding blocked (B-7: `SUPABASE_AUTH_URL` / `SUPABASE_AUTH_ANON_KEY` absent). **TASK-006B: BLOCKED — not started.** Implementation record: `handoff/TASK-006.md`.
+Status: **TASK-006A PARTIAL (2026-11-08)** — server-side Supabase verification implemented and live-verified for provider reachability (A), connectivity (B) and forged-token rejection (C); positive-path session verification (D) **BLOCKED on B-7b:** the SYNERGY project has zero Auth users and `SUPABASE_TEST_EMAIL` / `SUPABASE_TEST_PASSWORD` are absent from the secret environment. **TASK-006B: BLOCKED — not started.** Implementation record: `handoff/TASK-006.md`.
 Branch: `chore/autonomous-foundation-v1`
 Planning base: `f58fdfbc4acb8321a0c6b503eacbb15de2ac4823`
 Handoff: `handoff/TASK-006.md`

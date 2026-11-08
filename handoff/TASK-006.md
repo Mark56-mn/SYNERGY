@@ -212,3 +212,111 @@ That dashboard-token check is the step that converts "implemented" into "live-ve
 ## Next
 
 TASK-006B stays blocked: it needs successful positive-path real-user token verification and independent code review, plus `DATABASE_URL` in approved secret storage and a separate task release. Its first migration should key profiles by the verified `supabase_user_id` produced by this boundary. No schema work is authorised by this handoff update.
+
+## Positive-path verification mission — 2026-11-08 (agent)
+
+Outcome: **BLOCKED.** The mission asked for a genuine-user positive-path check (D) on the
+protected route. Both of its prerequisites fail, so it did not run. TASK-006A remains
+**PARTIAL**; nothing about the app was changed this mission.
+
+### A–E status
+
+| Item | State | Evidence |
+| --- | --- | --- |
+| A. Supabase credentials configured | reported | `SUPABASE_AUTH_URL` + `SUPABASE_AUTH_ANON_KEY` present (names only, anon key only) and refreshed into the gitignored env files — reported by the implementation agent (see the record above) |
+| B. Provider connectivity | reported | `/auth/v1/settings` 200; `GET /api/v1/owned-items` 401 with no token — reported by the implementation agent (see the record above) |
+| C. Forged-token rejection | reported | provider 403 for forged token; route 401 for forged token; 12 boundary tests present — reported by the implementation agent (see the record above) |
+| D. Genuine-user positive path | **BLOCKED** | `SUPABASE_TEST_EMAIL` / `SUPABASE_TEST_PASSWORD` absent (names-only env check, this mission); the SYNERGY project holds **zero** Auth users (mission-run read-only aggregate: 0 total, 0 confirmed) |
+| E. Sign-in/session lifecycle | not implemented | no login UI or route, no cookie session, no CSRF token, no logout — out of scope and still so |
+
+A–C do not imply D, and none of them imply E.
+
+### Why it stops here
+
+This mission forbids creating a Supabase user, modifying an existing user's account,
+enabling email autoconfirm, and using a service-role key to mint a session. With zero users
+in the project, a positive run would require breaking one of those rules — so it was not
+attempted. The exact missing prerequisites (owner actions):
+
+1. Create + email-confirm a test account in the SYNERGY project's Auth dashboard
+   (`mailer_autoconfirm` is `false`, so sign-up cannot proceed without mailbox access).
+2. Add `SUPABASE_TEST_EMAIL` and `SUPABASE_TEST_PASSWORD` to Settings and Secrets — an
+   approved-channel form of B-7b's out-of-band requirement, read from the process
+   environment by the (out-of-tree) verification harness, never from source.
+
+`.env.example` documents only the app's four variables and deliberately supports no
+test-account names; the `env.ts` zod schema tolerates extra environment variables (it is
+not `.strict()`), and the app never reads the test names.
+
+(The B-7b row also names a short-lived access token supplied through an approved
+out-of-band channel as an alternative to account-channel credentials; the runbook below
+uses the email/password channel. Either form requires the step-1 account to exist and be
+email-confirmed.)
+
+### Inspection notes (no code changes made; tree-checkable)
+
+- `web/src/app/api/v1/owned-items/route.ts`: GET `200 {items}` scoped by the verified
+  `session.userId`; POST `{title}` yields `201 {item}` whose `ownerId` is the verified
+  `userId` (the schema accepts `title` only). There is no middleware file — protection is
+  per-route via `createApiRoute`.
+- `web/src/server/http/handler.ts` (line 80): the session is resolved **before** body
+  parsing and before the data handler runs; an `AppError` thrown by
+  `requireAuthenticatedUser` aborts the pipeline, so a failed auth check cannot create or
+  modify user data (`insert` is only reachable after `requireAuthenticatedUser` passes).
+- `web/src/server/auth/supabase-session.ts`: provider-side `auth.getUser` verdict; provider
+  error text is deliberately discarded (it can quote token fragments); non-UUID ids rejected;
+  the provider-returned id is the only identity source.
+- `createOwnedResourceService` reads nothing from query/body for identity; `deleteItem`
+  verifies ownership before mutation; another user's item answers `not_found`.
+- File-level checks this mission: no `console.*` statement in `web/src/server/` logs an
+  `Authorization` header or token (grep clean), and the two protected routes' response bodies
+  contain no credential or token (the only identity value is the verified `ownerId` on the
+  created item). Per the narrowed test scope (5d5cea6), these are tree greps, not an
+  instrumented full-pipeline proof of system-wide non-disclosure.
+- The rate-limit peer key derives from `x-forwarded-for` — coarse, for abuse-limiting only,
+  never identity. No finding.
+
+**No genuine defect found.** The one open limitation is D/E above, a prerequisite problem,
+not a code problem.
+
+### Gates (this mission, after a clean `npm ci` — lockfile untouched, no upgrades)
+
+| Gate | Exit | Result |
+| --- | --- | --- |
+| `npm run format:check` | 0 | Clean |
+| `npm run lint` | 0 | 0 errors, 0 warnings |
+| `npm run typecheck` | 0 | All workspaces |
+| `npm test` | 0 | **14 files / 84 tests** |
+| `npm run secret-scan` | 0 | Clean |
+| `npm run check:boundaries` | 0 | Clean |
+| `npm run android:typecheck` | 0 | Unchanged |
+| `npm run build` (web production) | 0 | Compiled successfully |
+| `npm audit --audit-level=high` | 1 | B-5 advisories unchanged (not a gate; not addressed here) |
+| `npm run check:responsive` | NOT RUN | No UI source changed; browser install assumed unavailable |
+| `npx expo export --platform android` | NOT RUN | No Android source changed |
+
+History check: no JWT-like strings and no `sb_publishable_`/`sb_secret_` values appear in
+`git log --all -p` output (count-only grep).
+
+### Positive-path runbook for the next agent (after the owner unblocks)
+
+1. Verify `SUPABASE_TEST_EMAIL` / `SUPABASE_TEST_PASSWORD` are present (names only).
+2. Sign in: `POST /auth/v1/token?grant_type=password` with the anon `apikey` header and
+   `{email, password}` in the body. Keep `access_token` and `user.id` in process memory
+   only; never print, log, write, commit, or screenshot them.
+3. `GET /api/v1/owned-items` with `Authorization: Bearer <token>` — expect 200 (a new
+   caller has no items yet, so an empty list is the expected shape).
+4. `POST /api/v1/owned-items` `{title: "..."}` with the bearer token — expect 201, and the
+   response `item.ownerId` must equal the sign-in `user.id`. Compare in memory; record only
+   pass/fail. (This is the route's only place that echoes the derived identity.)
+5. Same token with `?user_id=<other UUID>` and `?isAdmin=true&role=admin` — identity and
+   role must not change (only the verified user's items appear).
+6. No token → 401. One-character-flipped token → 401. Forged or malformed token → 401.
+7. Expired/revoked token live checks are **not runnable** without a service key or waiting
+   out the 3600 s expiry: provider-side `getUser` expiry semantics plus the stubbed unit
+   tests cover them. Do not mint one with the service key.
+8. After the run, the token and sign-in result must be gone with the process; confirm the
+   dev-server log contains no `Bearer` string before shutting down.
+
+Then record the D result to close B-7b, re-run the §8 gates, and only then reconsider
+TASK-006B (which additionally needs `DATABASE_URL`).
