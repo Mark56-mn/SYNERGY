@@ -1,19 +1,29 @@
 # TASK-007 — Member Identity & Profiles handoff
 
 - **Task:** TASK-007 — Member Identity & Profiles
-  (`task/TASK-007-member-identity-profiles.md`, §12 records this run)
-- **Status:** **IMPLEMENTED** on the isolated database branch; design-board
-  fidelity remains unverified (B-9). The earlier BLOCKED run is preserved in
+  (`task/TASK-007-member-identity-profiles.md`, §12 records implementation and
+  §13 records the acceptance pass)
+- **Status:** **IMPLEMENTED — ACCEPTANCE PASS INCOMPLETE** on the isolated
+  database branch; design-board fidelity remains unverified (B-9), the
+  responsive gate is NOT RUN, no Vercel Preview could be created or inspected
+  from the agent environment, and owner Android acceptance remains pending.
+  The earlier BLOCKED run is preserved in
   `task/TASK-007-member-identity-profiles.md` §10.
 - **Branch:** `task/TASK-007-member-identity-profiles`
 - **Base:** `6a10d64e639115753ba595e5f807151db2363c49` (TASK-006C)
-- **Commits:** `111e1b0` (vertical slice) → `3eb4217` (privacy hardening) →
-  documentation commit on the same branch
+- **Final branch HEAD at acceptance:**
+  `2e8c59f58016ab23eb13228cb8f27cf2cecb3c9c`
+- **Remote implementation commits on that HEAD:** `6108fdc` (vertical slice) →
+  `8241834` (privacy hardening) → `2e8c59f` (documentation). The original
+  pre-replay identifiers `111e1b0` and `3eb4217` no longer appear in the pushed
+  branch history; they are preserved here for traceability only.
 - **Database:** Neon project `ancient-band-38052550`, branch
   `br-steep-field-b3nti5ov` (`task-007-member-identity-profiles`), database
   `neondb`, server PostgreSQL 18.6
-- **`main` / Production:** untouched. Nothing merged, nothing promoted, no
-  Vercel deployment attempted.
+- **`main` / Production:** untouched. Nothing merged and nothing promoted. A
+  Vercel Preview deployment was not created or inspected during the acceptance
+  pass: the agent environment has no Vercel session, no `.vercel/` linkage and
+  no `VERCEL_*` credentials (`npx vercel whoami` → "Logged out.").
 
 ## 1. What shipped
 
@@ -222,3 +232,106 @@ A pooled connection string was generated for this dedicated branch. The privileg
 The design boards are available in the current ChatGPT project working files, but not yet in the FreeBuff container/repository. This remains an access limitation until they are made available to the agent; no design-fidelity claim is authorized before inspection.
 
 **Resume point:** after secure environment setup, continue from §4A of the authoritative TASK-007 spec. Verify connection without printing secrets, generate/test migrations only on the dedicated branch, then complete onboarding, profile read/edit, privacy enforcement and tests. No production migration, main merge or Production promotion.
+
+## 11. Final acceptance pass — 2026-11-08
+
+### 11.1 Result
+
+The implementation is **ready for owner acceptance except three explicitly open items**: no TASK-007 Vercel Preview could be created or inspected from this agent environment, authenticated Android profile acceptance remains **OWNER TEST REQUIRED**, and design/responsive acceptance remains unverified. Do not label TASK-007 accepted until those owner-side checks are complete.
+
+### 11.2 Remote branch and commit verification
+
+An authenticated `cloud_git fetch` was run for `task/TASK-007-member-identity-profiles`. The fetched remote and local HEAD both resolved to `2e8c59f58016ab23eb13228cb8f27cf2cecb3c9c`, with a left/right count of `0/0`, and the working tree was clean before documentation edits. The reported implementation commit was therefore present and current. No commit was rewritten or force-pushed.
+
+### 11.3 Neon branch and migration verification
+
+Using only the existing environment-supplied connection string, the agent verified without printing the value:
+
+| Check | Returned value |
+| --- | --- |
+| `current_setting('neon.branch_id', true)` | `br-steep-field-b3nti5ov` |
+| `current_setting('neon.project_id', true)` | `ancient-band-38052550` |
+| `current_database()` | `neondb` |
+| PostgreSQL version | `18.6` |
+
+The migration journal is in the `drizzle` schema table `__drizzle_migrations` and contains one row for `0000_nappy_vapor` (hash beginning `79360fdc92e9`). `public.profiles` exists with `id, identity_id, username, display_name, bio, avatar_url, visibility, created_at, updated_at`; `profile_visibility` contains exactly `public,private`; there were **0 rows** before the live check. `npm run db:generate` reported **no schema changes**, so the migration was not rerun. `node scripts/profile-live-check.mjs` passed **12/12**, including branch/project/database identity, idempotency, concurrency and constraint checks, and reported `remaining=0` after cleanup.
+
+### 11.4 Quality gates on exact HEAD
+
+| Command | Exit | Evidence |
+| --- | --- | --- |
+| `npm run format:check` | 0 | all matched files use Prettier style |
+| `npm run lint` | 0 | ESLint clean |
+| `npm run typecheck` | 0 | web and Android workspaces pass |
+| `npm test` | 0 | **25 files / 199 tests passed** |
+| `npm run build` | 0 | Next.js production build succeeds; profile routes present |
+| `npm run secret-scan` | 0 | clean, **236 tracked files** |
+| `npm run check:boundaries` | 0 | clean, **88 files** |
+| `npm run db:generate` | 0 | **no schema changes** |
+| `npm run verify` | 0 | all required gates pass |
+| `node scripts/profile-live-check.mjs` | 0 | **12/12** |
+| `npm run check:responsive` | 2 | **NOT RUN** — Playwright unavailable in the agent VM |
+| `npm audit --audit-level=high` | 1 | **unchanged B-5 set: 19 vulnerabilities (2 critical, 3 high, 14 moderate)** |
+
+### 11.5 Privacy and access-control evidence
+
+Two temporary profile rows were seeded through the verified isolated branch and removed afterward; no profile row remained.
+
+Development server:
+
+- `/u/accept_public` — **200**. The rendered page showed the public bio, but Next.js development async-debug frames contained the repository record with `id` and `identityId`. This is a development-only serialisation channel, not the production page payload.
+- `/u/accept_private` — **404**. The private bio, display name and `identityId` had **0 occurrences** in the HTML/RSC response; the title was only `<title>SYNERGY</title>`.
+- `GET /api/v1/profiles/accept_public` — **200** with exactly `username`, `displayName`, `bio`, `avatarUrl`, and `isOwner:false`.
+- `GET /api/v1/profiles/accept_private` — **404** with `{ "error": { "code": "not_found", "message": "Profile not found." } }`.
+- Signed-out `/onboarding`, `/profile`, and `/profile/edit` each returned **307** to the login route with the corresponding `next` path.
+
+Production server (`npm run start` after the successful production build):
+
+- `/u/accept_public` — **200**, public bio present, `identityId` occurrences **0**.
+- `/u/accept_private` — **404**, private bio/display name/`identityId` occurrences **0**.
+- `/u/amara.makes` — **200**, with demo content labelled demo.
+- Public API — **200**, four-field DTO only; private API — **404**.
+- Signed-out redirects matched the development behaviour.
+- Metadata for the private 404 page contained only the generic application title/value; it did not contain the display name.
+- The service derives identity from the verified session only. Strict request schemas and route tests prove that body-supplied `identityId`/`userId` mass assignment is rejected; a cross-user write has no code path. The owner view is exposed through the owner DTO/API only. A genuine signed-in owner session was not available to the agent, so owner-side persistence across sign-out/sign-in remains **OWNER TEST REQUIRED**.
+
+### 11.6 Vercel Preview
+
+No deployment was created, identified, or inspected in this pass. The agent environment has no Vercel session, no `.vercel/` linkage, and no `VERCEL_*` credentials (`npx vercel whoami` returned "Logged out."). No deployment ID, Preview URL, build log, or deployed SHA can be claimed from this environment. The intended deployment target if owner-side Vercel access is used is **exact HEAD `2e8c59f58016ab23eb13228cb8f27cf2cecb3c9c`** on branch `task/TASK-007-member-identity-profiles` as a **Preview only**. Do not promote it to Production. No Supabase Auth setting, production Neon branch, `main`, or Vercel production environment was changed.
+
+### 11.7 Owner Android acceptance checklist — OWNER TEST REQUIRED
+
+After the exact Preview above is available:
+
+1. Open the Preview URL on Android.
+2. Sign in with an existing test account, or register a test account if needed.
+3. Complete onboarding with a unique username and display name.
+4. Add a short bio and save.
+5. Open the profile and confirm the saved details appear.
+6. Edit the bio and save again.
+7. Refresh the page and confirm the changed details remain.
+8. Sign out and sign back in.
+9. Confirm the same profile and edited details remain.
+10. While signed out, open the public profile URL and confirm only the approved public fields appear.
+
+If the account is already onboarded, do not create a duplicate profile. Use the existing profile and report whether it remains intact.
+
+Privacy check with a second test account, if available:
+
+1. Set that account's profile visibility to `private`.
+2. Open its profile from the first account or a signed-out browser.
+3. Confirm the response is **404**.
+4. Confirm no private bio, identity subject, internal ID, or private metadata appears.
+
+Do not report passwords, cookies, access tokens, or secret environment values in the result.
+
+### 11.8 Responsive and design status
+
+`npm run check:responsive` exited **2 — NOT RUN** because Playwright is unavailable in the agent VM. Therefore **no browser viewport acceptance claim is made** for 360, 414, 1280, or 1440 px. The original design boards are still absent from the agent environment and from tracked repository paths, so no fidelity comparison was possible. Needed before design acceptance: `docs/design/image_471bde6f.jpg` and `docs/design/image_d8ec3e9b.jpg` (or an equivalent documented path), plus a browser-capable verification environment.
+
+### 11.9 Remaining blockers and next action
+
+1. **Vercel Preview:** deploy/inspect exact HEAD as a Preview using authenticated Vercel access and record deployment ID/URL/SHA.
+2. **Owner acceptance:** complete the Android checklist above and report each result.
+3. **Design/responsive:** supply the two boards and run real browser checks at 360/414/1280/1440 px.
+4. **Next task:** only after these decisions, start **TASK-008 Social Publishing** as a separate task. Do not merge `main`, promote Production, change Supabase Auth, or migrate the production Neon branch.
