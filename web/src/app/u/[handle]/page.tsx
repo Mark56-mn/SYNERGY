@@ -8,6 +8,8 @@ import { getProfileService } from "@/modules/profile/provider";
 import {
   toOwnerProfileDto,
   toPublicProfileDto,
+  type OwnerProfileDto,
+  type PublicProfileDto,
 } from "@/modules/profile/service";
 import { getCurrentSession } from "@/server/provider-access";
 
@@ -19,17 +21,35 @@ export const dynamic = "force-dynamic";
  * Public profile route (TASK-007 §4C/§4D).
  *
  * Resolution order:
- *   1. a real member profile — rendered from the public DTO, or the owner DTO
- *      when the viewer is that member;
- *   2. a demonstration account, still rendered with its demo labelling (demo
- *      records must stay visibly fictional until a later task replaces them);
+ *   1. a real member profile — rendered from a DTO, never a raw row;
+ *   2. a demonstration account, still rendered with its demo labelling;
  *   3. a genuine 404. A private profile takes this path for everyone but its
  *      owner, so "private" never becomes an existence oracle.
+ *
+ * PRIVACY NOTE (found by testing, not assumed): the loader returns an
+ * ALLOWLISTED DTO and never the repository record. Next serialises values that
+ * cross the server/client boundary — including, in development, the resolved
+ * values attached to async frames — and an earlier version of this page returned
+ * the raw record, which put the auth subject, timestamps and the `private`
+ * visibility flag into the RSC payload of a 404 page. Converting here means
+ * there is no raw row to serialise, in any rendering mode.
  */
-async function loadMemberProfile(handle: string) {
+
+type LoadedProfile =
+  | { profile: PublicProfileDto; isOwner: false }
+  | { profile: OwnerProfileDto; isOwner: true };
+
+async function loadMemberProfile(
+  handle: string,
+): Promise<LoadedProfile | null> {
   const session = await getCurrentSession();
   const view = await getProfileService().findProfileForViewer(handle, session);
-  return view;
+  if (!view) {
+    return null;
+  }
+  return view.isOwner
+    ? { profile: toOwnerProfileDto(view.profile), isOwner: true }
+    : { profile: toPublicProfileDto(view.profile), isOwner: false };
 }
 
 export async function generateMetadata({
@@ -38,9 +58,11 @@ export async function generateMetadata({
   params: Promise<{ handle: string }>;
 }): Promise<Metadata> {
   const { handle } = await params;
-  const view = await loadMemberProfile(handle);
-  if (view) {
-    return { title: `${view.profile.displayName} (@${view.profile.username})` };
+  const loaded = await loadMemberProfile(handle);
+  if (loaded) {
+    return {
+      title: `${loaded.profile.displayName} (@${loaded.profile.username})`,
+    };
   }
   const demo = getAuthor(handle);
   return { title: demo ? `${demo.displayName} (demo)` : "Profile" };
@@ -53,17 +75,10 @@ export default async function ProfilePage({
 }) {
   const { handle } = await params;
 
-  const view = await loadMemberProfile(handle);
-  if (view) {
+  const loaded = await loadMemberProfile(handle);
+  if (loaded) {
     return (
-      <MemberProfileView
-        profile={
-          view.isOwner
-            ? toOwnerProfileDto(view.profile)
-            : toPublicProfileDto(view.profile)
-        }
-        isOwner={view.isOwner}
-      />
+      <MemberProfileView profile={loaded.profile} isOwner={loaded.isOwner} />
     );
   }
 
