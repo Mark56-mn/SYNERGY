@@ -1,8 +1,6 @@
 # TASK-006C — Deployment and Experience Consistency
 
-Status: **PARTIAL (2026-11-08)** — implementation, gates and browser verification
-complete; Workstream A (deployment verification) **BLOCKED** (no Vercel access)
-and live positive sign-in still **BLOCKED** on B-7b. See §"Implementation record".
+Status: **DONE WITH DOCUMENTED ENVIRONMENT LIMITATION (2026-11-08)** — owner verified the final Preview on an Android phone and confirmed test-account creation, successful sign-in and sign-out. Preview is READY for the exact final commit. The Playwright responsive script remained unavailable in the implementation VM; real Chromium viewport checks and owner phone testing provide documented substitute evidence. See §"Owner verification addendum".
 Branch: `task/TASK-006C-deployment-experience-consistency`
 Base: `a5766de4415e419a50b8b85e3ad0232e7a96f2b6` (`fix/auth-forms-remove-ibadan-branding`)
 Starting commit (spec): `c312829` · Implementation commit: `0e97fa8`
@@ -148,3 +146,19 @@ variables (`npx vercel whoami` → "Logged out."). The acceptance criterion
 owner must open the project's Deployments page (or grant Vercel access) and
 confirm a preview for this branch at `0e97fa8`. Live positive sign-in remains
 unverified (B-7b: zero Auth users, no approved test account).
+
+
+## Owner verification addendum (2026-11-08)
+
+The following evidence supersedes earlier implementation-time statements that Vercel access and the live positive authentication path were blocked:
+
+- Connected Vercel verification found deployment `dpl_7CWeXAL4gQPWbD2ovnSTosNG92Rq` in **READY** state.
+- Preview URL: `https://synergy-1ayluu193-drop2.vercel.app`.
+- Exact branch: `task/TASK-006C-deployment-experience-consistency`.
+- Exact deployed commit: `6a10d64e639115753ba595e5f807151db2363c49`.
+- Live Preview routes `/`, `/login`, `/register`, `/communities`, `/account` and `/api/v1/health` were fetched. All returned successful responses; account resolved to the login experience when unauthenticated; login email/password fields and registration email/password/confirmation fields were present; no forbidden city strings were found in rendered HTML.
+- Owner tested the Preview on an Android phone and confirmed the experience works. Owner also confirmed successful test-account creation, sign-in and sign-out. This is owner-observed live end-to-end evidence, not an automated integration test.
+- `npm run check:responsive` remains **NOT RUN** in the FreeBuff VM because Chromium system libraries were unavailable and root package installation was unavailable. Do not mark that command as passed. The implementation handoff's real Chromium checks at 360×800, 414×896, 1280×800 and 1440×900 remain the automated visual substitute evidence; owner phone testing adds a separate real-device check.
+- Preview only. No Production promotion and no `main` changes.
+
+On that basis TASK-006C is closed for sequencing purposes. Preserve the unavailable Playwright gate as a known environment limitation and re-run it when a compatible browser environment is available; it does not block beginning TASK-007.
