@@ -1,8 +1,11 @@
 # TASK-006C — Deployment and Experience Consistency
 
-Status: READY FOR IMPLEMENTATION
+Status: **PARTIAL (2026-11-08)** — implementation, gates and browser verification
+complete; Workstream A (deployment verification) **BLOCKED** (no Vercel access)
+and live positive sign-in still **BLOCKED** on B-7b. See §"Implementation record".
 Branch: `task/TASK-006C-deployment-experience-consistency`
 Base: `a5766de4415e419a50b8b85e3ad0232e7a96f2b6` (`fix/auth-forms-remove-ibadan-branding`)
+Starting commit (spec): `c312829` · Implementation commit: `0e97fa8`
 Priority: P0 — close the visible deployment/experience gap before starting new product features.
 
 ## Mission objective
@@ -103,3 +106,45 @@ TASK-006C may be marked DONE only if:
 - current handoff/status documents accurately reflect implementation and unresolved live-auth limitations.
 
 If any criterion fails, mark PARTIAL or BLOCKED, identify the precise cause, and provide the smallest next action. Stop after this mission; do not silently begin TASK-007.
+
+## Implementation record (2026-11-08)
+
+Status: **PARTIAL**. Full detail and evidence in `handoff/TASK-006C.md`.
+
+Implemented on this branch (`c312829` → `0e97fa8` + docs):
+
+- `/login`, `/register`, `/forgot-password`, `/reset-password` now always
+  render their real controls; an unconfigured provider fails on submit with
+  the API's accurate configuration error instead of replacing the form.
+- Last city-specific string in the product surface removed
+  (`android/app/(tabs)/services.tsx`).
+- `scripts/check-responsive.mjs` repaired (stale `/communities/bodija-traders`
+  → `independent-traders`, a URL `a5766de` had already renamed).
+- `tests/no-location-branding.test.ts` added: fails if `Ibadan`, `Bodija`,
+  `Dugbe`, `Akobo`, `Jericho` or `Ring Road` reappears in `web/src`,
+  `android/app`, `packages` or `scripts`. Normative/historical records stay
+  out of scope by design (D-001 remains CONFIRMED).
+- `Sidebar` notice corrected: it no longer claims accounts are not stored.
+
+Gate results (exact): `format:check` 0 · `lint` 0 · `typecheck` 0 · `test` 0
+(22 files / 158 tests) · `build` 0 · `secret-scan` 0 · `check:boundaries` 0 ·
+`verify` 0 (audit advisory only) · `npm audit --audit-level=high` 1 (pre-existing
+B-5) · `check:responsive` **exit 2 = NOT RUN** (no local browser libraries, no
+root in this VM).
+
+Browser verification (real Chromium, production build of `0e97fa8`) at
+360×800, 414×896, 1280×800, 1440×900 across `/`, `/login`, `/register`,
+`/communities`, `/account`: every page rendered with zero horizontal overflow;
+`/account` redirected to `/login` at every width; login rendered Email +
+Password + submit, registration rendered Email + Password + Confirm password +
+submit; empty-submit validation produced `aria-invalid` and visible messages.
+Live negative sign-in against the real provider returned a generic 401 with no
+`Set-Cookie`.
+
+Not satisfied: no Preview deployment could be identified or produced — this
+environment has no Vercel session, no `.vercel/` linkage and no `VERCEL_*`
+variables (`npx vercel whoami` → "Logged out."). The acceptance criterion
+"a READY Preview tied to the final task-branch commit" is therefore unmet; the
+owner must open the project's Deployments page (or grant Vercel access) and
+confirm a preview for this branch at `0e97fa8`. Live positive sign-in remains
+unverified (B-7b: zero Auth users, no approved test account).
