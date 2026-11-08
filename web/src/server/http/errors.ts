@@ -16,6 +16,7 @@ export type ErrorCode =
   | "unauthorized"
   | "forbidden"
   | "not_found"
+  | "conflict"
   | "rate_limited"
   | "internal_error";
 
@@ -24,6 +25,9 @@ const STATUS_BY_CODE: Record<ErrorCode, number> = {
   unauthorized: 401,
   forbidden: 403,
   not_found: 404,
+  // TASK-007: a unique-constraint race (username already claimed) is a client
+  // conflict, not a server fault, so it gets its own stable code.
+  conflict: 409,
   rate_limited: 429,
   internal_error: 500,
 };
@@ -59,6 +63,12 @@ export function forbidden(
 
 export function notFound(safeMessage = "Resource not found."): AppError {
   return new AppError("not_found", safeMessage);
+}
+
+export function conflict(
+  safeMessage = "That value is already taken.",
+): AppError {
+  return new AppError("conflict", safeMessage);
 }
 
 export function rateLimited(

@@ -11,6 +11,7 @@ import {
   mediaItemSchema,
   messageSchema,
   profileSchema,
+  profileVisibilitySchema,
   usernameSchema,
 } from "../src/index.js";
 
@@ -109,14 +110,18 @@ describe("profile contract shapes", () => {
     expect(usernameSchema.safeParse("ab").success).toBe(false);
   });
 
-  it("profiles take a UUID user id and a visibility value", () => {
+  it("profiles take a UUID user id and a public/private visibility value", () => {
     const result = profileSchema.safeParse({
       userId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       username: "ada_okoro",
       displayName: "Ada Okoro",
-      visibility: "followers",
+      visibility: "public",
     });
     expect(result.success).toBe(true);
+    // TASK-007 narrowed the vocabulary: a follower-scoped value cannot be
+    // enforced before a follow graph exists, so it is refused, not stored.
+    expect(profileVisibilitySchema.safeParse("private").success).toBe(true);
+    expect(profileVisibilitySchema.safeParse("followers").success).toBe(false);
     expect(communityVisibilitySchema.safeParse("hidden").success).toBe(true);
     expect(communityVisibilitySchema.safeParse("secret").success).toBe(false);
   });

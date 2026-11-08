@@ -16,9 +16,17 @@ import { defineConfig } from "drizzle-kit";
  */
 export default defineConfig({
   dialect: "postgresql",
-  out: "./migrations",
+  // Read from the environment only, and only by `db:migrate` (which needs a
+  // live connection). The value is never printed by drizzle-kit or by our
+  // scripts, and never committed. `db:generate` works with it unset.
+  dbCredentials: { url: process.env.DATABASE_URL ?? "" },
+  // Resolved from the repo root (where `npm run db:generate` runs), so the
+  // reviewable SQL history lands inside the documented `db/` boundary.
+  out: "./db/migrations",
   schema: [
     // Wildcards keep the single-migration-tool rule while letting each module
-    // own its schema file. No schema files exist yet in this task.
+    // own its schema file. Paths resolve from the repo root, where the npm
+    // script runs. TASK-007 added the first schema module (member profiles).
+    "./web/src/modules/*/schema.ts",
   ],
 });

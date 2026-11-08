@@ -6,25 +6,28 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardBody, CardTitle } from "@/components/ui/Card";
+import { getProfileService } from "@/modules/profile/provider";
 import { getCurrentSession } from "@/server/provider-access";
 
 export const metadata: Metadata = { title: "Your account" };
 
 /**
- * The account page — the one route that requires a verified session.
+ * The account page — requires a verified session, checked server-side before
+ * anything renders.
  *
- * The check runs SERVER-SIDE before anything renders, so a signed-out
- * visitor is redirected to sign-in without ever seeing account content
- * (no client-side flash of private data). What is shown is the
- * provider-verified user id — the identity every other part of the app
- * attributes actions to. The persisted profile record itself is a later
- * task and is not faked here.
+ * TASK-007 adds the profile summary here: this page is where a signed-in member
+ * lands, so it is also where "you have no profile yet" must be answered with a
+ * real onboarding link rather than a promise about a later step. The stored
+ * profile id / auth subject is not displayed: it is an internal key, not
+ * something a member needs.
  */
 export default async function AccountPage() {
   const session = await getCurrentSession();
   if (!session) {
     redirect("/login?next=%2Faccount");
   }
+
+  const profile = await getProfileService().getOwnProfile(session);
 
   return (
     <AuthShell
@@ -36,15 +39,60 @@ export default async function AccountPage() {
           <CardTitle>Signed in</CardTitle>
           <Badge tone="primary">Verified</Badge>
         </div>
-        <CardBody>Your account ID (used to attribute your actions):</CardBody>
-        <p className="mt-1 break-all font-mono text-sm text-ink">
-          {session.userId}
-        </p>
         <CardBody>
-          Your full profile is coming in a later step; nothing is lost by
-          signing out — your account stays yours.
+          Your sign-in is verified by SYNERGY&apos;s identity provider. Email
+          addresses and sign-in details are never shown on your profile.
         </CardBody>
       </Card>
+
+      <Card>
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle>Profile</CardTitle>
+          {profile ? (
+            <Badge
+              tone={profile.visibility === "public" ? "neutral" : "warning"}
+            >
+              {profile.visibility === "public" ? "Public" : "Private"}
+            </Badge>
+          ) : null}
+        </div>
+        {profile ? (
+          <>
+            <CardBody>
+              You appear as <strong>{profile.displayName}</strong> (@
+              {profile.username}).
+            </CardBody>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <Link
+                href={`/u/${profile.username}`}
+                className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-bg hover:bg-primary-hover"
+              >
+                View my profile
+              </Link>
+              <Link
+                href="/profile/edit"
+                className="inline-flex items-center justify-center rounded-md border border-border bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:border-primary hover:text-primary"
+              >
+                Edit profile
+              </Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <CardBody>
+              Your account has no profile yet. Choose a username to finish
+              setting it up — nobody else can see your account until you do.
+            </CardBody>
+            <Link
+              href="/onboarding"
+              className="mt-3 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-bg hover:bg-primary-hover"
+            >
+              Set up my profile
+            </Link>
+          </>
+        )}
+      </Card>
+
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <LogoutButton />
         <Link
