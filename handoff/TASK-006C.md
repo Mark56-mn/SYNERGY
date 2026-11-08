@@ -1,9 +1,7 @@
 # TASK-006C — Deployment and experience consistency handoff
 
 - **Task ID / title:** TASK-006C — Deployment and Experience Consistency
-- **Status:** **PARTIAL (2026-11-08).** Code and gates complete; **Workstream A
-  (deployment verification) BLOCKED** — no Vercel access exists in this
-  environment; live positive sign-in still **BLOCKED on B-7b**.
+- **Status:** **DONE WITH DOCUMENTED ENVIRONMENT LIMITATION (2026-11-08).** Owner verified the final Preview on an Android phone and confirmed test-account creation, successful sign-in and sign-out. Preview is READY for the final commit. Playwright responsive script remains unavailable in the implementation VM; real Chromium viewport checks and owner phone test are recorded below.
 - **Branch:** `task/TASK-006C-deployment-experience-consistency` (never merged
   into `main`, never promoted to Production)
 - **Starting commit:** `c312829` (task specification commit, base `a5766de`)
@@ -254,3 +252,19 @@ the owner one URL to bookmark.
 
 Do not mark TASK-006C DONE on the basis of this handoff: the preview
 deployment criterion is unmet.
+
+
+## 10. Owner verification addendum (2026-11-08)
+
+This addendum supersedes the implementation-time blockers recorded in §1 and §4:
+
+- Vercel deployment: `dpl_7CWeXAL4gQPWbD2ovnSTosNG92Rq` — **READY**.
+- Preview URL: `https://synergy-1ayluu193-drop2.vercel.app`.
+- Branch: `task/TASK-006C-deployment-experience-consistency`.
+- Exact commit: `6a10d64e639115753ba595e5f807151db2363c49`.
+- Live route fetches for `/`, `/login`, `/register`, `/communities`, `/account` and `/api/v1/health` succeeded. Login and registration fields were present in the returned HTML; no forbidden location strings were found. Unauthenticated `/account` resolved to the login experience.
+- Owner confirmed the Preview works on their phone and confirmed a test account was created successfully and can sign in and sign out. This is owner-observed live evidence; do not relabel it as a scripted integration test.
+- The local `npm run check:responsive` remains **NOT RUN** because the VM lacks required Chromium system libraries and root package installation. Keep this limitation visible. Real Chromium viewport evidence in §6 plus owner phone testing are the substitute checks.
+- No Production promotion; `main` remains untouched.
+
+**Sequencing decision:** TASK-006C is closed for roadmap sequencing. The unavailable local Playwright gate is a documented environment limitation, not a reason to block the next product task. Re-run the gate in a compatible environment when available.
