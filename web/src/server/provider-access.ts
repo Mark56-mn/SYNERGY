@@ -161,12 +161,18 @@ export async function getCurrentSession(): Promise<Session | null> {
   return source.getSession(request);
 }
 
-/** Minimal public surface: which source a route should use, given env setup. */
+/**
+ * Return false only when the environment is valid but the two Supabase
+ * credentials are absent (the supported local-development state).
+ *
+ * Do not catch getEnv() failures here. In staging/production, or when any
+ * supplied environment variable is malformed, getEnv() throws an
+ * EnvValidationError containing variable NAMES only. Let that error reach
+ * the route wrapper so its server-side log exposes the real configuration
+ * problem instead of disguising it as "Supabase Auth is not configured".
+ * Secret values are never included in the validation error.
+ */
 export function isSupabaseAuthConfigured(): boolean {
-  try {
-    const env = getEnv();
-    return Boolean(env.SUPABASE_AUTH_URL && env.SUPABASE_AUTH_ANON_KEY);
-  } catch {
-    return false;
-  }
+  const env = getEnv();
+  return Boolean(env.SUPABASE_AUTH_URL && env.SUPABASE_AUTH_ANON_KEY);
 }
