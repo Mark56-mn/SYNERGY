@@ -37,6 +37,11 @@ export interface RouteContext<TBody> {
   session: Session | null;
   /** Parsed+validated JSON body; `undefined` when the route takes no input. */
   body: TBody | undefined;
+  /**
+   * Dynamic route segments (`[id]`), already decoded by Next. Empty for static
+   * routes. Values are still validated by the service before any data access.
+   */
+  params: Record<string, string>;
 }
 
 export interface RouteDeps<TBody> {
@@ -74,10 +79,17 @@ function parseErrorBody(code: ErrorCode, message: string): string {
 /** Build the wrapped route function for a Next.js App Router route module. */
 export function createApiRoute<TBody>(
   deps: RouteDeps<TBody>,
-): (request: Request) => Promise<Response> {
-  return async function route(request: Request): Promise<Response> {
+): (
+  request: Request,
+  context?: { params?: Promise<Record<string, string>> },
+) => Promise<Response> {
+  return async function route(
+    request: Request,
+    context?: { params?: Promise<Record<string, string>> },
+  ): Promise<Response> {
     try {
       const session = await deps.sessionSource.getSession(request);
+      const params = (await context?.params) ?? {};
 
       if (deps.limiter) {
         const decision = deps.limiter.limit(identityKeyOf(session, request));
@@ -120,7 +132,7 @@ export function createApiRoute<TBody>(
         body = parsed.data;
       }
 
-      const response = await deps.handler({ request, session, body });
+      const response = await deps.handler({ request, session, body, params });
       return response;
     } catch (error) {
       if (error instanceof AppError) {

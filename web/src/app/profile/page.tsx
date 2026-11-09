@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { MemberProfileView } from "@/components/profile/MemberProfileView";
+import { getPostsService } from "@/modules/posts/provider";
 import { getProfileService } from "@/modules/profile/provider";
 import { toOwnerProfileDto } from "@/modules/profile/service";
+import type { PostViewDto } from "@synergy/domain";
 import { getCurrentSession } from "@/server/provider-access";
 
 export const metadata: Metadata = { title: "Your profile" };
@@ -26,5 +28,23 @@ export default async function OwnProfilePage() {
     redirect("/onboarding");
   }
 
-  return <MemberProfileView profile={toOwnerProfileDto(profile)} isOwner />;
+  let posts: PostViewDto[] = [];
+  try {
+    posts = (
+      await getPostsService().getPostsByUsername(session, profile.username, {
+        limit: 10,
+      })
+    ).posts;
+  } catch {
+    // The profile still renders; the Posts tab shows its honest empty state.
+  }
+
+  return (
+    <MemberProfileView
+      profile={toOwnerProfileDto(profile)}
+      isOwner
+      posts={posts}
+      signedIn
+    />
+  );
 }

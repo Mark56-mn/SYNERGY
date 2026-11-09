@@ -1,29 +1,48 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { FeedStream } from "@/components/feed/FeedStream";
+import { MemberFeed } from "@/components/feed/MemberFeed";
 import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
+import { getPostsService } from "@/modules/posts/provider";
+import type { PostPageDto } from "@synergy/domain";
+import { getCurrentSession } from "@/server/provider-access";
 
 export const metadata: Metadata = { title: "Home" };
+
+/** The feed is per-viewer (own posts, like state): never statically cached. */
+export const dynamic = "force-dynamic";
 
 const QUICK_LINKS = [
   { href: "/discover", label: "Discover", icon: "compass" as const },
   { href: "/communities", label: "Communities", icon: "users" as const },
-  { href: "/discover?tab=videos", label: "Videos", icon: "play" as const },
+  { href: "/discover?tab=posts", label: "Posts", icon: "sparkles" as const },
   {
-    href: "/discover?tab=businesses",
-    label: "Businesses",
+    href: "/discover?tab=creators",
+    label: "Creators",
     icon: "briefcase" as const,
   },
 ];
 
 /**
- * Home: the ecosystem introduction plus the feed. Everything below the intro
- * is demonstration content (see `demo-content.ts`); no ranking, personalisation
- * or persistence is implied.
+ * Home: the ecosystem introduction plus the REAL feed (TASK-008A).
+ *
+ * The first page is rendered on the server from the posts service, so a
+ * visitor sees posts immediately and the SQL visibility rule has already been
+ * applied. When the development database is not configured, the page says the
+ * feed is unavailable instead of substituting demonstration posts.
  */
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await getCurrentSession();
+
+  let initial: PostPageDto = { posts: [], nextCursor: null };
+  let unavailable = false;
+  try {
+    initial = await getPostsService().getFeed(session, { limit: 10 });
+  } catch {
+    unavailable = true;
+  }
+
   return (
     <div>
       <section className="px-4 pb-4 pt-5 sm:px-5">
@@ -32,9 +51,9 @@ export default function HomePage() {
           People, creators and services — connected
         </h1>
         <p className="mt-2 text-sm leading-6 text-ink-muted">
-          SYNERGY is a Nigeria-first social and commerce ecosystem. Discovery
-          should lead somewhere useful: a person to follow, a community to join,
-          a local service that answers.
+          SYNERGY is a Nigeria-first social and commerce ecosystem. Share what
+          you are making, find people worth following, and let discovery lead
+          somewhere useful.
         </p>
         <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {QUICK_LINKS.map((link) => (
@@ -51,7 +70,11 @@ export default function HomePage() {
         </ul>
       </section>
 
-      <FeedStream />
+      <MemberFeed
+        initial={initial}
+        signedIn={Boolean(session)}
+        unavailable={unavailable}
+      />
     </div>
   );
 }

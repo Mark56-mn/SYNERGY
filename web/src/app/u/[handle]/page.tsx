@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { MemberProfileView } from "@/components/profile/MemberProfileView";
 import { ProfileView } from "@/components/profile/ProfileView";
 import { getAuthor } from "@/lib/demo-content";
+import { getPostsService } from "@/modules/posts/provider";
 import { getProfileService } from "@/modules/profile/provider";
 import {
   toOwnerProfileDto,
@@ -11,6 +12,7 @@ import {
   type OwnerProfileDto,
   type PublicProfileDto,
 } from "@/modules/profile/service";
+import type { PostViewDto } from "@synergy/domain";
 import { getCurrentSession } from "@/server/provider-access";
 
 // A username resolves against the database per request: profiles change, and a
@@ -52,6 +54,24 @@ async function loadMemberProfile(
     : { profile: toPublicProfileDto(view.profile), isOwner: false };
 }
 
+/**
+ * The member's posts for this surface. A database failure degrades to "no
+ * posts" rather than failing the whole profile, and the service has already
+ * applied the visibility rule (a private profile's posts are only returned to
+ * its owner).
+ */
+async function loadMemberPosts(username: string): Promise<PostViewDto[]> {
+  try {
+    const session = await getCurrentSession();
+    const page = await getPostsService().getPostsByUsername(session, username, {
+      limit: 10,
+    });
+    return page.posts;
+  } catch {
+    return [];
+  }
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -77,8 +97,17 @@ export default async function ProfilePage({
 
   const loaded = await loadMemberProfile(handle);
   if (loaded) {
+    const [posts, session] = await Promise.all([
+      loadMemberPosts(loaded.profile.username),
+      getCurrentSession(),
+    ]);
     return (
-      <MemberProfileView profile={loaded.profile} isOwner={loaded.isOwner} />
+      <MemberProfileView
+        profile={loaded.profile}
+        isOwner={loaded.isOwner}
+        posts={posts}
+        signedIn={Boolean(session)}
+      />
     );
   }
 

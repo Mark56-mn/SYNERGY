@@ -8,6 +8,20 @@
       "when": 1794176302766,
       "tag": "0000_nappy_vapor",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794259854838,
+      "tag": "0001_real_moira_mactaggert",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794260062976,
+      "tag": "0002_brown_santa_claus",
+      "breakpoints": true
     }
   ]
 }

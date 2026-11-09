@@ -6,7 +6,6 @@ import { Icon } from "@/components/ui/Icon";
 import type { AuthNavState } from "@/lib/auth-nav";
 import { RightRail } from "@/components/shell/RightRail";
 import { Sidebar } from "@/components/shell/Sidebar";
-import { DEMO_DISCLOSURE } from "@/lib/demo-content";
 
 /**
  * Responsive application shell.
@@ -82,7 +81,9 @@ export function AppShell({
             >
               <p className="border-b border-border bg-surface/60 px-4 py-2 text-[11px] leading-4 text-ink-muted sm:rounded-md sm:border sm:px-3">
                 <span className="font-semibold text-warning">Demo build.</span>{" "}
-                {DEMO_DISCLOSURE}
+                Anything labelled “Demo” is a fictional example. Posts and
+                profiles you create are saved to this project&apos;s development
+                database and are not shown to the public internet.
               </p>
               {children}
             </main>

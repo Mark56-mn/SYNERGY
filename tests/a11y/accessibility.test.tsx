@@ -2,7 +2,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { FeedStream } from "@/components/feed/FeedStream";
+import { MemberFeed } from "@/components/feed/MemberFeed";
 import { CommunityCard } from "@/components/communities/CommunityCard";
 import { DiscoveryExplorer } from "@/components/discovery/DiscoveryExplorer";
 import { ProfileView } from "@/components/profile/ProfileView";
@@ -42,11 +42,32 @@ describe("accessibility: application shell and navigation", () => {
 });
 
 describe("accessibility: feed", () => {
-  it("post cards, media labels and feed tabs pass axe", async () => {
+  const feedPost = {
+    id: "99999999-9999-4999-8999-999999999999",
+    body: "A real member post with a #topic.",
+    mediaUrl: null,
+    mediaAlt: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    timeLabel: "2h",
+    topics: ["topic"],
+    author: {
+      username: "ada_okoro",
+      displayName: "Ada Okoro",
+      avatarUrl: null,
+    },
+    likeCount: 3,
+    likedByViewer: false,
+    isOwner: false,
+  };
+
+  it("the real feed's cards, topics and actions pass axe", async () => {
     render(
       <main>
         <h1>Feed</h1>
-        <FeedStream />
+        <MemberFeed
+          initial={{ posts: [feedPost], nextCursor: null }}
+          signedIn
+        />
       </main>,
     );
     await expectNoA11yViolations(document.body);

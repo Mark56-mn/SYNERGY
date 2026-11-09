@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { MemberPostCard } from "@/components/feed/MemberPostCard";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/States";
 import { Tabs } from "@/components/ui/Tabs";
+import type { PostViewDto } from "@synergy/domain";
 
 /**
  * Profile surface for a REAL member (TASK-007) — distinct from the fictional
@@ -44,12 +46,18 @@ function ReservedAction({ label, hintId }: { label: string; hintId: string }) {
 export function MemberProfileView({
   profile,
   isOwner,
+  posts = [],
+  signedIn = false,
 }: {
   profile: MemberProfileData;
   isOwner: boolean;
+  /** The member's published posts, already visibility-filtered server-side. */
+  posts?: PostViewDto[];
+  signedIn?: boolean;
 }) {
   const [tab, setTab] = useState("about");
   const hintId = `member-profile-${profile.username}-actions`;
+  const mediaPosts = posts.filter((post) => post.mediaUrl);
 
   return (
     <div>
@@ -57,7 +65,6 @@ export function MemberProfileView({
         className="h-24 w-full bg-gradient-to-br from-primary/20 via-surface to-surface-raised sm:h-32"
         aria-hidden="true"
       />
-
       <div className="px-4 sm:px-5">
         <div className="-mt-10 flex items-end justify-between gap-3">
           <Avatar
@@ -124,20 +131,18 @@ export function MemberProfileView({
             tasks.
           </p>
         ) : null}
-      </div>
-
+      </div>{" "}
       <Tabs
         items={[
           { id: "about", label: "About" },
-          { id: "posts", label: "Posts", count: 0 },
-          { id: "media", label: "Media", count: 0 },
+          { id: "posts", label: "Posts", count: posts.length },
+          { id: "media", label: "Media", count: mediaPosts.length },
         ]}
         value={tab}
         onChange={setTab}
         label={`${profile.displayName} profile sections`}
         className="mt-5 px-2 sm:px-3"
       />
-
       <div
         role="tabpanel"
         id={`panel-${tab}`}
@@ -159,21 +164,68 @@ export function MemberProfileView({
         ) : null}
 
         {tab === "posts" ? (
-          <EmptyState
-            title="No posts yet"
-            description="Publishing arrives with the social publishing task, so member profiles start without posts."
-          />
+          posts.length === 0 ? (
+            <EmptyState
+              title="No posts yet"
+              description={
+                isOwner
+                  ? "You have not published anything yet. Your posts appear on this profile and in the home feed."
+                  : `${profile.displayName} has not published anything yet.`
+              }
+              action={
+                isOwner ? (
+                  <Link
+                    href="/compose"
+                    className="inline-flex min-h-[40px] items-center rounded-md bg-primary px-4 text-sm font-semibold text-bg hover:bg-primary-hover"
+                  >
+                    Create your first post
+                  </Link>
+                ) : undefined
+              }
+            />
+          ) : (
+            <ul className="-mx-4 border-t border-border sm:-mx-5">
+              {posts.map((post) => (
+                <li key={post.id}>
+                  <MemberPostCard post={post} signedIn={signedIn} />
+                </li>
+              ))}
+            </ul>
+          )
         ) : null}
 
         {tab === "media" ? (
-          <EmptyState
-            title="No media yet"
-            description={
-              profile.avatarUrl
-                ? "Your profile photo is the only photo on this profile right now. Post photos arrive with the social publishing task."
-                : "No media yet. Your uploaded profile photo will appear here once you add one."
-            }
-          />
+          <div className="space-y-4">
+            {mediaPosts.length === 0 ? (
+              <EmptyState
+                title="No photos yet"
+                description={
+                  isOwner
+                    ? "Photos you attach to posts appear here. Your profile photo is managed from Edit profile."
+                    : "This member has not shared a post photo yet."
+                }
+              />
+            ) : (
+              <ul className="grid grid-cols-2 gap-2">
+                {mediaPosts.map((post) => (
+                  <li key={post.id}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={post.mediaUrl!}
+                      alt={post.mediaAlt ?? `Photo by ${profile.displayName}`}
+                      loading="lazy"
+                      className="aspect-square w-full rounded-md border border-border object-cover"
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+            {profile.avatarUrl ? (
+              <p className="text-xs text-ink-muted">
+                Your profile photo is managed separately from post photos.
+              </p>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </div>
