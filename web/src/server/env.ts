@@ -25,7 +25,12 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1).optional(),
   SUPABASE_AUTH_URL: z.url().optional(),
   SUPABASE_AUTH_ANON_KEY: z.string().min(1).optional(),
-  MEDIA_PROVIDER_ADAPTER: z.enum(["stub", "cloudinary"]).default("stub"),
+  // Vercel can supply an explicitly empty optional variable. Treat blank as
+  // unset so the documented development/stub default remains deterministic.
+  MEDIA_PROVIDER_ADAPTER: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.enum(["stub", "cloudinary"]).default("stub"),
+  ),
   CLOUDINARY_CLOUD_NAME: z.string().min(1).optional(),
   CLOUDINARY_API_KEY: z.string().min(1).optional(),
   CLOUDINARY_API_SECRET: z.string().min(1).optional(),
@@ -82,8 +87,6 @@ export function getEnv(): AppEnv {
 
   const isDev = (process.env.APP_ENV ?? "development") === "development";
 
-  // Per-environment requiredness (before schema parsing; absence is legal
-  // where the environment allows, and provided values are still validated).
   if (!isDev) {
     const missing = missingOf(requiredOutsideDevelopment);
     if (missing.length > 0) {
@@ -93,7 +96,7 @@ export function getEnv(): AppEnv {
     }
   }
 
-  const adapter = process.env.MEDIA_PROVIDER_ADAPTER ?? "stub";
+  const adapter = process.env.MEDIA_PROVIDER_ADAPTER?.trim() || "stub";
   if (adapter === "cloudinary") {
     const missing = missingOf(cloudinaryFields);
     if (missing.length > 0) {
@@ -113,7 +116,6 @@ export function getEnv(): AppEnv {
     );
   }
 
-  // In development an explicitly empty DATABASE_URL means "no database here".
   if (isDev && !process.env.DATABASE_URL?.trim()) {
     parsed.data.DATABASE_URL = undefined as unknown as string;
   }
