@@ -121,6 +121,7 @@ export interface PostRepository {
   suggestedCreators(input: {
     viewerId: string | null;
     limit: number;
+    query?: string;
   }): Promise<CreatorSuggestion[]>;
 }
 
@@ -427,8 +428,21 @@ export function createDrizzlePostRepository(db: Database): PostRepository {
         postCount: Number(row.value),
       }));
     },
-
-    async suggestedCreators({ viewerId, limit }) {
+    async suggestedCreators({ viewerId, limit, query }) {
+      const conditions: Array<SQL | undefined> = [
+        eq(profiles.visibility, "public"),
+        viewerId ? sql`${profiles.identityId} <> ${viewerId}` : undefined,
+      ];
+      const needle = query?.trim();
+      if (needle) {
+        const pattern = `%${escapeLikePattern(needle)}%`;
+        conditions.push(
+          or(
+            ilike(profiles.username, pattern),
+            ilike(profiles.displayName, pattern),
+          ),
+        );
+      }
       const rows = await db
         .select({
           username: profiles.username,
@@ -445,12 +459,7 @@ export function createDrizzlePostRepository(db: Database): PostRepository {
             isNull(posts.deletedAt),
           ),
         )
-        .where(
-          and(
-            eq(profiles.visibility, "public"),
-            viewerId ? sql`${profiles.identityId} <> ${viewerId}` : undefined,
-          ),
-        )
+        .where(and(...conditions))
         .groupBy(
           profiles.username,
           profiles.displayName,

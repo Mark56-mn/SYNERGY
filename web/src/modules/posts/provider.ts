@@ -27,6 +27,11 @@ export function createFeedReadLimiter(): RateLimiter {
   return createInMemoryRateLimiter({ maxPerWindow: 120, windowSeconds: 60 });
 }
 
+/** Discovery runs three queries per request: bounded tighter than the feed. */
+export function createDiscoverReadLimiter(): RateLimiter {
+  return createInMemoryRateLimiter({ maxPerWindow: 60, windowSeconds: 60 });
+}
+
 /** Publishing is a write: tighter than reading. */
 export function createPostWriteLimiter(): RateLimiter {
   return createInMemoryRateLimiter({ maxPerWindow: 10, windowSeconds: 60 });

@@ -74,7 +74,7 @@ export interface PostsService {
   }): Promise<TrendingTopicDto[]>;
   getSuggestedCreators(
     session: Session | null,
-    options?: { limit?: number },
+    options?: { limit?: number; query?: string | null },
   ): Promise<CreatorSuggestionDto[]>;
 }
 
@@ -311,6 +311,7 @@ export function createPostsService(repository: PostRepository): PostsService {
       return repository.suggestedCreators({
         viewerId: session?.userId ?? null,
         limit,
+        query: options.query?.trim() || undefined,
       });
     },
   };

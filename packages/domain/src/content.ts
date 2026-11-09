@@ -154,6 +154,15 @@ export interface TrendingTopicDto {
   postCount: number;
 }
 
+/** One discovery response: search matches, people to follow and topics. */
+export interface DiscoverResultDto {
+  query: string;
+  topic: string | null;
+  posts: PostViewDto[];
+  creators: CreatorSuggestionDto[];
+  topics: TrendingTopicDto[];
+}
+
 /**
  * Stable, locale-independent time label ("now", "5m", "2h", "3d", "12 Mar").
  * Computed where the data is read so server HTML and client hydration agree.

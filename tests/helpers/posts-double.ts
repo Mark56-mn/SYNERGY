@@ -232,11 +232,21 @@ export function createInMemoryPostRepository(
         .slice(0, limit);
     },
 
-    async suggestedCreators({ viewerId, limit }): Promise<CreatorSuggestion[]> {
+    async suggestedCreators({
+      viewerId,
+      limit,
+      query,
+    }): Promise<CreatorSuggestion[]> {
+      const needle = query?.trim().toLowerCase();
       return [...authors.entries()]
         .filter(([identityId, author]) => {
           if (author.visibility !== "public") return false;
-          return identityId !== viewerId;
+          if (identityId === viewerId) return false;
+          if (!needle) return true;
+          return (
+            author.username.includes(needle) ||
+            author.displayName.toLowerCase().includes(needle)
+          );
         })
         .map(([identityId, author]) => ({
           username: author.username,
