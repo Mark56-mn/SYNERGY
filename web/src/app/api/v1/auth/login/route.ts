@@ -16,7 +16,7 @@ import {
   createAuthRateLimiter,
   getLazyAuthGateway,
   getLazySessionSource,
-  isSupabaseAuthConfigured,
+  getSupabaseAuthConfigStatus,
 } from "@/server/provider-access";
 import type { RateLimiter } from "@/server/ratelimit";
 import { safeNextPath } from "@/lib/safe-redirect";
@@ -53,7 +53,15 @@ export function createLoginRoute(deps: LoginRouteDeps) {
     inputSchema: loginSchema,
     handler: async ({ request, body }) => {
       rejectCrossOriginIfPresent(request);
-      if (!isSupabaseAuthConfigured()) {
+      const authConfig = getSupabaseAuthConfigStatus();
+      if (!authConfig.configured) {
+        // This log intentionally contains booleans and the environment name
+        // only. Never log either credential or any portion of its value.
+        console.error("[auth] Supabase credentials unavailable in runtime", {
+          appEnv: authConfig.appEnv,
+          authUrlPresent: authConfig.authUrlPresent,
+          authAnonKeyPresent: authConfig.authAnonKeyPresent,
+        });
         throw new AppError(
           "internal_error",
           "Authentication is not configured in this environment.",
