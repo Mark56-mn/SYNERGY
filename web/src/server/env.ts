@@ -106,7 +106,11 @@ export function getEnv(): AppEnv {
     }
   }
 
-  const parsed = envSchema.safeParse(process.env);
+  const parsed = envSchema.safeParse({
+    ...process.env,
+    // Validate the normalized adapter value, not the raw Vercel env entry.
+    MEDIA_PROVIDER_ADAPTER: adapter,
+  });
   if (!parsed.success) {
     const fields = [
       ...new Set(parsed.error.issues.map((issue) => issue.path.join("."))),
