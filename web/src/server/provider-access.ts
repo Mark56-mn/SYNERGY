@@ -172,7 +172,30 @@ export async function getCurrentSession(): Promise<Session | null> {
  * problem instead of disguising it as "Supabase Auth is not configured".
  * Secret values are never included in the validation error.
  */
-export function isSupabaseAuthConfigured(): boolean {
+export interface SupabaseAuthConfigStatus {
+  appEnv: string;
+  authUrlPresent: boolean;
+  authAnonKeyPresent: boolean;
+  configured: boolean;
+}
+
+/**
+ * Safe runtime diagnostic: reports presence booleans only, never credential
+ * contents. Used to distinguish a Vercel runtime injection issue from an
+ * invalid provider credential.
+ */
+export function getSupabaseAuthConfigStatus(): SupabaseAuthConfigStatus {
   const env = getEnv();
-  return Boolean(env.SUPABASE_AUTH_URL && env.SUPABASE_AUTH_ANON_KEY);
+  const authUrlPresent = Boolean(env.SUPABASE_AUTH_URL);
+  const authAnonKeyPresent = Boolean(env.SUPABASE_AUTH_ANON_KEY);
+  return {
+    appEnv: env.APP_ENV,
+    authUrlPresent,
+    authAnonKeyPresent,
+    configured: authUrlPresent && authAnonKeyPresent,
+  };
+}
+
+export function isSupabaseAuthConfigured(): boolean {
+  return getSupabaseAuthConfigStatus().configured;
 }
