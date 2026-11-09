@@ -44,7 +44,7 @@ export default async function RootLayout({
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        <AppShell authState={{ userId: session?.userId ?? null }}>
+        <AppShell authState={{ signedIn: Boolean(session) }}>
           {children}
         </AppShell>
       </body>

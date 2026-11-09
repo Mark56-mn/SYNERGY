@@ -31,6 +31,16 @@ export const USERNAME_MAX_LENGTH = 30;
 export const DISPLAY_NAME_MAX_LENGTH = 80;
 export const BIO_MAX_LENGTH = 280;
 export const AVATAR_URL_MAX_LENGTH = 2048;
+/** TASK-007B: phone-gallery upload bounds. */
+export const AVATAR_MAX_BYTES = 4 * 1024 * 1024;
+export const AVATAR_MAX_WIDTH = 8000;
+export const AVATAR_MAX_HEIGHT = 8000;
+export const ALLOWED_AVATAR_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+export type AllowedAvatarMime = (typeof ALLOWED_AVATAR_MIME_TYPES)[number];
 
 /**
  * Canonical username normalisation. Deterministic and idempotent: trimming,
@@ -68,9 +78,10 @@ export const displayNameSchema = z
 export const bioSchema = z.string().trim().max(BIO_MAX_LENGTH);
 
 /**
- * Avatar is a URL ONLY in this slice (no uploads, no media pipeline): https
- * only, bounded length. An empty string is accepted by the request schemas and
- * normalised to `null` by the service so forms can clear the field.
+ * Persisted avatar value. Uploads (TASK-007B) land on Cloudinary and persist
+ * the canonical HTTPS secure URL; https only, bounded length. An empty string
+ * is accepted by the request schemas and normalised to `null` by the service
+ * so forms can clear the field.
  */
 export const avatarUrlSchema = z
   .string()

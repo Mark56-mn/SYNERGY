@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ComposeButton } from "@/components/shell/ComposeButton";
 import { Icon } from "@/components/ui/Icon";
-import { isActivePath, PRIMARY_NAV } from "@/components/ui/BottomNav";
+import { getPrimaryNavItems, isActivePath } from "@/components/ui/BottomNav";
 import type { AuthNavState } from "@/lib/auth-nav";
 import { cn } from "@/lib/cn";
 
@@ -15,13 +15,15 @@ import { cn } from "@/lib/cn";
  *
  * Below the primary destinations, the server-provided `authState` decides
  * the account block: signed-out visitors see Sign in / Create account;
- * signed-in users see an Account link and Sign out. The demo profile route
- * (`/u/…`) stays a public demo destination and is never presented as the
- * viewer's own account.
+ * signed-in users see an Account link and Sign out. The Profile destination
+ * (TASK-007B) points signed-in members to their own `/profile` and signed-out
+ * visitors to sign-in. Demo profiles (`/u/…`) stay public demo content and
+ * are never presented as the viewer's own profile.
  */
 export function Sidebar({ authState }: { authState?: AuthNavState }) {
   const pathname = usePathname();
-  const signedIn = Boolean(authState?.userId);
+  const signedIn = Boolean(authState?.signedIn);
+  const primaryNav = getPrimaryNavItems(signedIn);
 
   return (
     <aside
@@ -43,7 +45,7 @@ export function Sidebar({ authState }: { authState?: AuthNavState }) {
       </Link>
       <nav aria-label="Primary" className="mt-8">
         <ul className="space-y-1">
-          {PRIMARY_NAV.map((item) => {
+          {primaryNav.map((item) => {
             const active = isActivePath(pathname, item.href);
             return (
               <li key={item.href}>
@@ -102,8 +104,8 @@ export function Sidebar({ authState }: { authState?: AuthNavState }) {
 
       <div className="mt-auto space-y-2 px-2">
         <p className="rounded-md border border-border bg-bg/60 p-3 text-[11px] leading-5 text-ink-muted">
-          Community preview. Profiles and posts are fictional demonstrations —
-          no profile, message or listing is stored yet.
+          Profiles labelled “Demo” are demonstrations. Member profiles are saved
+          to your account and stay after you sign out.
         </p>
       </div>
     </aside>

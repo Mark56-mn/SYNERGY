@@ -12,7 +12,10 @@ import {
 
 import type { Session } from "@/server/auth/session";
 import { requireAuthenticatedUser } from "@/server/authz";
+import { getEnv } from "@/server/env";
 import { badRequest, conflict, notFound } from "@/server/http/errors";
+
+import { assertAvatarUrlAllowed } from "./avatar-upload";
 
 import {
   UsernameConflictError,
@@ -82,6 +85,25 @@ export interface ProfileService {
   ): Promise<ProfileView | null>;
 }
 
+/**
+ * When the deployment is Cloudinary-backed, only URLs produced by the
+ * server-signed upload flow (fixed folder, generated public_id) may be
+ * persisted — this closes the "PATCH an arbitrary https URL" bypass.
+ * In the stub/dev environment the https-only domain check still applies.
+ */
+function assertProfileAvatarUrlAllowed(url: string | null | undefined): void {
+  let cloudinaryEnabled = false;
+  let cloudName: string | undefined;
+  try {
+    const env = getEnv();
+    cloudinaryEnabled = env.MEDIA_PROVIDER_ADAPTER === "cloudinary";
+    cloudName = env.CLOUDINARY_CLOUD_NAME;
+  } catch {
+    // Unconfigured environments keep the https-only contract.
+  }
+  assertAvatarUrlAllowed(url, { cloudinaryEnabled, cloudName });
+}
+
 /** Empty/whitespace text becomes SQL NULL so "clear the bio" is expressible. */
 function nullableText(
   value: string | null | undefined,
@@ -138,13 +160,16 @@ export function createProfileService(
         return { profile: existing, created: false };
       }
 
+      const onboardingAvatar = nullableText(parsed.data.avatarUrl) ?? null;
+      assertProfileAvatarUrlAllowed(onboardingAvatar);
+
       try {
         return await repository.create({
           identityId: user.userId,
           username: parsed.data.username,
           displayName: parsed.data.displayName,
           bio: nullableText(parsed.data.bio) ?? null,
-          avatarUrl: nullableText(parsed.data.avatarUrl) ?? null,
+          avatarUrl: onboardingAvatar,
           visibility: parsed.data.visibility,
         });
       } catch (error) {
@@ -180,6 +205,7 @@ export function createProfileService(
         patch.bio = nullableText(parsed.data.bio);
       if (parsed.data.avatarUrl !== undefined) {
         patch.avatarUrl = nullableText(parsed.data.avatarUrl);
+        assertProfileAvatarUrlAllowed(patch.avatarUrl);
       }
       if (parsed.data.visibility !== undefined) {
         patch.visibility = parsed.data.visibility;

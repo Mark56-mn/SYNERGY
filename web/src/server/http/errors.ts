@@ -18,6 +18,7 @@ export type ErrorCode =
   | "not_found"
   | "conflict"
   | "rate_limited"
+  | "service_unavailable"
   | "internal_error";
 
 const STATUS_BY_CODE: Record<ErrorCode, number> = {
@@ -29,6 +30,7 @@ const STATUS_BY_CODE: Record<ErrorCode, number> = {
   // conflict, not a server fault, so it gets its own stable code.
   conflict: 409,
   rate_limited: 429,
+  service_unavailable: 503,
   internal_error: 500,
 };
 

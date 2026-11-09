@@ -25,7 +25,7 @@ export default async function OnboardingPage() {
 
   const existing = await getProfileService().getOwnProfile(session);
   if (existing) {
-    redirect(`/u/${existing.username}`);
+    redirect("/profile");
   }
 
   return (

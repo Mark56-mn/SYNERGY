@@ -15,21 +15,39 @@ import { cn } from "@/lib/cn";
  * Services and Market live inside Discover until their own tasks exist, and the
  * Android shell uses the same five destinations.
  *
- * The fourth destination is auth-aware (TASK-006B): signed-in users get
- * Account (`/account`); signed-out visitors get Sign in (`/login`) instead
- * of being pointed at a demo profile. The demo `/u/…` routes remain public
- * and reachable from Discover.
+ * The Profile destination is auth-aware (TASK-007B): signed-in members get
+ * their own profile at `/profile` (resolved server-side from the verified
+ * session, redirecting to onboarding when no profile exists); signed-out
+ * visitors get Sign in (`/login`) instead. Demo profiles (`/u/…`) remain
+ * public demo content reachable from Discover — never presented as a member's
+ * own profile.
  */
-export const PRIMARY_NAV: Array<{
+export type NavItem = {
   href: string;
   label: string;
   icon: IconName;
-}> = [
+};
+
+/** Desktop sidebar destinations (identical IA on both widths). */
+export const PRIMARY_NAV: NavItem[] = [
   { href: "/", label: "Home", icon: "home" },
   { href: "/discover", label: "Discover", icon: "compass" },
   { href: "/communities", label: "Communities", icon: "users" },
-  { href: "/u/amara.makes", label: "Profile", icon: "user" },
 ];
+
+/**
+ * Build the primary destinations for the current member. Signed-in members
+ * are taken to their own profile; visitors are taken to sign-in. The demo
+ * profile is never returned here.
+ */
+export function getPrimaryNavItems(signedIn: boolean): NavItem[] {
+  return [
+    ...PRIMARY_NAV,
+    signedIn
+      ? { href: "/profile", label: "Profile", icon: "user" }
+      : { href: "/login?next=%2Fprofile", label: "Profile", icon: "user" },
+  ];
+}
 
 export function isActivePath(pathname: string, href: string): boolean {
   if (href === "/") {
@@ -41,10 +59,11 @@ export function isActivePath(pathname: string, href: string): boolean {
 /** Mobile bottom bar: four destinations plus the central create action. */
 export function BottomNav({ authState }: { authState?: AuthNavState }) {
   const pathname = usePathname();
+  const signedIn = Boolean(authState?.signedIn);
   const [home, discover, communities] = PRIMARY_NAV;
-  const accountItem = authState?.userId
-    ? { href: "/account", label: "Account", icon: "user" as const }
-    : { href: "/login", label: "Sign in", icon: "user" as const };
+  const profileItem = signedIn
+    ? { href: "/profile", label: "Profile", icon: "user" as IconName }
+    : { href: "/login", label: "Sign in", icon: "user" as IconName };
 
   const renderItem = (item: {
     href: string;
@@ -83,7 +102,7 @@ export function BottomNav({ authState }: { authState?: AuthNavState }) {
           <ComposeButton variant="fab" />
         </li>
         {renderItem(communities!)}
-        {renderItem(accountItem)}
+        {renderItem(profileItem)}
       </ul>
     </nav>
   );

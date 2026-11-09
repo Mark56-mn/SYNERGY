@@ -1,8 +1,9 @@
 # TASK-007B — Profile Navigation, Phone Photo Upload & Preview Recovery
 
-Status: READY FOR IMPLEMENTATION
+Status: **IMPLEMENTED — ACCEPTANCE PASS INCOMPLETE**
 Branch: `task/TASK-007B-profile-media-navigation-preview`
 Base commit: `2e8c59f58016ab23eb13228cb8f27cf2cecb3c9c` on `task/TASK-007-member-identity-profiles`
+TASK-007B base at implementation start: `a6241cabf92c598cedace91ed678a99d930c2fe5`
 Scope: Complete the real-member profile experience and make its Preview deployable. Preview only; never merge to `main`, promote to Production, or modify Production settings.
 
 ## 1. Owner-approved objective
@@ -135,3 +136,46 @@ The task is complete only when:
 - `main` and Production are unchanged.
 
 Report honestly which parts are implemented, tested, deployed, or waiting on owner action. No fabricated test, deployment or upload success.
+
+## 10. Implementation record — 2026-11-09 (IMPLEMENTED — ACCEPTANCE PASS INCOMPLETE)
+
+Implemented on `task/TASK-007B-profile-media-navigation-preview` from base
+`a6241cabf92c598cedace91ed678a99d930c2fe5`:
+
+- Navigation: mobile and desktop Profile now resolve to the member's own
+  `/profile` (server-verified session; redirects to `/onboarding` when no
+  profile exists). Signed-out visitors get Sign in. `/u/amara.makes` is no
+  longer a primary-nav destination; demo profiles remain demo-labelled.
+  Browser nav props carry only `signedIn: boolean`. Sidebar footer copy
+  corrected.
+- Phone-gallery upload: `POST /api/v1/profile/avatar-upload` validates
+  JPEG/PNG/WebP by magic bytes, 4 MB and 8000×8000 px limits, rate-limits
+  (10/min), requires same-origin + verified session, signs a fixed-folder
+  Cloudinary upload server-side and returns only the verified `avatarUrl`.
+  `AvatarUpload` implements gallery/file-picker selection, preview, cancel/
+  replace, loading/retry, and honest failure copy. The confirmed URL is saved
+  by the regular profile save; a failed upload never overwrites the previous
+  photo. `MemberProfileView`/`Avatar` render the persisted photo.
+- Cloudinary-backed deployments restrict new avatar URLs to the caller's
+  Cloudinary folder (`ProfileService`), closing the arbitrary-https bypass.
+- Tests: 27 files / 219 tests pass (20 new). `typecheck`, `lint`, `build`,
+  `verify`, `secret-scan`, `check:boundaries`, `db:generate` (no changes),
+  and `profile-live-check` 12/12 pass. Production HTML check: public profile
+  with seeded Cloudinary URL → 200 with `<img>`; private → 404 with zero
+  private-data occurrences; 0 rows after cleanup.
+
+Open items (see `handoff/TASK-007B.md` §4–§5, §8):
+
+- Cloudinary credentials are absent locally and in the prior Preview
+  inventory; live phone-gallery upload to Cloudinary is NOT proven.
+  Uploads honestly return 503 with the exact Preview variable names.
+- Vercel Preview BLOCKED cause documented (commit-author association vs.
+  team) but NOT resolved — Vercel CLI is logged out in the agent
+  environment. Owner must confirm Git connection + team membership and
+  re-trigger a Preview deployment from this branch's HEAD. No READY
+  deployment is claimed.
+- `npm run check:responsive` NOT RUN (Playwright unavailable). Design boards
+  still absent (B-9).
+- Owner Android acceptance remains OWNER TEST REQUIRED.
+
+No migration, no `main` change, no Production promotion.

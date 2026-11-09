@@ -19,7 +19,7 @@ import { DEMO_DISCLOSURE } from "@/lib/demo-content";
  * One layout, not two: the same components and content reflow between widths.
  *
  * `authState` comes from the root layout's server-side session check
- * (provider-verified user id or `null`). It drives the sign-in/account
+ * (a signed-in boolean only). It drives the sign-in/account
  * affordances; the demo disclosure below it is unchanged and applies to the
  * demonstration content, never to the real account surface.
  */
@@ -30,7 +30,7 @@ export function AppShell({
   children: ReactNode;
   authState?: AuthNavState;
 }) {
-  const signedIn = Boolean(authState?.userId);
+  const signedIn = Boolean(authState?.signedIn);
   return (
     <div className="min-h-dvh bg-bg">
       <div className="mx-auto flex w-full max-w-[1400px]">

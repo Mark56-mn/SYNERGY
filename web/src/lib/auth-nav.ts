@@ -1,11 +1,11 @@
 /**
  * Auth navigation state passed from the root layout (server) into the shell.
  *
- * `userId` is the PROVIDER-VERIFIED Supabase Auth user id, or `null` when
- * signed out. It is safe to render (it is the signed-in user's own id, which
- * the app already treats as public-to-self); no token or credential ever
- * travels in this value. Client-safe by design.
+ * Only a boolean membership flag is sent to the browser. The verified user
+ * id, tokens and credentials never enter navigation props (TASK-007B). The
+ * pages that need the id resolve it server-side from the verified session.
  */
 export interface AuthNavState {
-  userId: string | null;
+  /** True when the request carries a provider-verified member session. */
+  signedIn: boolean;
 }

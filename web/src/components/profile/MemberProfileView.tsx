@@ -64,6 +64,7 @@ export function MemberProfileView({
             name={profile.displayName}
             seed={profile.username}
             size="xl"
+            src={profile.avatarUrl}
             className="border-4 border-bg"
           />
           {isOwner ? (
@@ -106,11 +107,8 @@ export function MemberProfileView({
           </p>
         )}
 
-        {profile.avatarUrl && isOwner ? (
-          <p className="mt-2 text-xs text-ink-muted">
-            A profile photo link is saved. Image uploads arrive with the media
-            tasks, so initials are shown for now.
-          </p>
+        {profile.avatarUrl ? (
+          <p className="mt-2 text-xs text-ink-muted">Profile photo.</p>
         ) : null}
 
         {isOwner && profile.visibility === "private" ? (
@@ -170,7 +168,11 @@ export function MemberProfileView({
         {tab === "media" ? (
           <EmptyState
             title="No media yet"
-            description="Photo and video uploads are not part of this task; nothing is shown until they exist."
+            description={
+              profile.avatarUrl
+                ? "Your profile photo is the only photo on this profile right now. Post photos arrive with the social publishing task."
+                : "No media yet. Your uploaded profile photo will appear here once you add one."
+            }
           />
         ) : null}
       </div>

@@ -1,10 +1,12 @@
 import { cn } from "@/lib/cn";
 
 /**
- * Initial-based avatar. No profile photos are fabricated for demonstration
- * accounts, so avatars derive a stable tint from the handle and show initials.
- * The text alternative states that the identity is fictional when `demo` is
- * set.
+ * Avatar. When a verified HTTPS photo URL is supplied (TASK-007B uploaded
+ * Cloudinary photo) it is rendered as a photo; otherwise the component
+ * falls back to initials with a stable tint. No profile photos are fabricated
+ * for demonstration accounts — demo avatars keep initials. The text
+ * alternative states that the identity is fictional when `demo` is set, and
+ * the photo alt attributes the picture to its owner.
  */
 const sizes = {
   sm: "h-8 w-8 text-xs",
@@ -42,6 +44,7 @@ export function Avatar({
   seed,
   size = "md",
   demo = false,
+  src,
   className,
 }: {
   name: string;
@@ -49,8 +52,34 @@ export function Avatar({
   seed: string;
   size?: keyof typeof sizes;
   demo?: boolean;
+  /** Uploaded portrait URL; only `https:` values are rendered. */
+  src?: string | null;
   className?: string;
 }) {
+  if (src) {
+    try {
+      const url = new URL(src);
+      if (url.protocol === "https:") {
+        return (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={src}
+            alt={`${name}${demo ? " (demonstration profile)" : " profile photo"}`}
+            width={64}
+            height={64}
+            loading="lazy"
+            className={cn(
+              "inline-flex shrink-0 select-none items-center justify-center rounded-full border border-border object-cover",
+              sizes[size],
+              className,
+            )}
+          />
+        );
+      }
+    } catch {
+      // Fall through to initials when the stored value is not a usable URL.
+    }
+  }
   return (
     <span
       role="img"

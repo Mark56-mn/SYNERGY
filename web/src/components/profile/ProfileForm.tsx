@@ -4,11 +4,13 @@ import { normalizeUsername } from "@synergy/domain";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
+import { AvatarUpload } from "@/components/profile/AvatarUpload";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/Input";
 
 /**
- * Onboarding / edit form (TASK-007 §4B, §4C).
+ * Onboarding / edit form (TASK-007 §4B, §4C; TASK-007B adds phone-gallery
+ * photo upload).
  *
  * The server is the only authority: this form preflights username availability
  * for a friendlier message, but every rule (normalisation, uniqueness,
@@ -133,11 +135,8 @@ export function ProfileForm({
         return;
       }
 
-      const body = (await response.json()) as {
-        profile: { username: string };
-      };
       setStatus(isOnboarding ? "Profile created." : "Profile updated.");
-      router.push(`/u/${body.profile.username}`);
+      router.push("/profile");
       router.refresh();
     } catch {
       setFormError(
@@ -216,16 +215,21 @@ export function ProfileForm({
         </p>
       </div>
 
-      <TextField
-        label="Profile photo link (optional)"
-        value={avatarUrl}
-        onChange={(event) => setAvatarUrl(event.target.value)}
-        error={fieldErrors.avatarUrl}
-        hint="An https image link. Uploads are not part of this task."
-        inputMode="url"
-        autoCapitalize="none"
-        spellCheck={false}
+      <AvatarUpload
+        displayName={displayName}
+        username={normalized || initial?.username || ""}
+        currentUrl={avatarUrl}
+        disabled={pending}
+        onUploaded={(url) => {
+          setAvatarUrl(url);
+          setFieldErrors((previous) => ({ ...previous, avatarUrl: undefined }));
+        }}
       />
+      {fieldErrors.avatarUrl ? (
+        <p role="alert" className="text-sm font-medium text-danger">
+          {fieldErrors.avatarUrl}
+        </p>
+      ) : null}
 
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium text-ink">
