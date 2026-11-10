@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { AccountMenu } from "@/components/shell/AccountMenu";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { Icon } from "@/components/ui/Icon";
 import type { AuthNavState } from "@/lib/auth-nav";
@@ -30,7 +31,6 @@ export function AppShell({
   children: ReactNode;
   authState?: AuthNavState;
 }) {
-  const signedIn = Boolean(authState?.signedIn);
   return (
     <div className="min-h-dvh bg-bg">
       <div className="mx-auto flex w-full max-w-[1400px]">
@@ -47,23 +47,7 @@ export function AppShell({
                 SYNERGY
               </Link>
               <div className="flex items-center gap-2">
-                {signedIn ? (
-                  <Link
-                    href="/account"
-                    className="flex h-10 items-center rounded-full border border-border px-3 text-sm font-medium text-ink-muted"
-                    aria-label="Your account"
-                  >
-                    Account
-                  </Link>
-                ) : (
-                  <Link
-                    href="/login"
-                    className="flex h-10 items-center rounded-full border border-border px-3 text-sm font-medium text-ink-muted"
-                    aria-label="Sign in"
-                  >
-                    Sign in
-                  </Link>
-                )}
+                <AccountMenu authState={authState} />
                 <a
                   href="/discover"
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-ink-muted"

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { ReactNode } from "react";
 
 import { AppShell } from "@/components/shell/AppShell";
+import { getProfileService } from "@/modules/profile/provider";
 import { getCurrentSession } from "@/server/provider-access";
 import { tokens } from "@synergy/design-tokens";
 
@@ -38,13 +39,29 @@ export default async function RootLayout({
 }) {
   const session = await getCurrentSession();
 
+  // Resolve the member's saved profile (if any) so the mobile account menu
+  // can render their real photo, with initials as the fallback. Identity
+  // still comes from the verified session; this is a read of the member's
+  // own profile only.
+  const profile = session
+    ? await getProfileService()
+        .getOwnProfile(session)
+        .catch(() => null)
+    : null;
+
   return (
     <html lang="en">
       <body className="min-h-dvh bg-bg text-ink">
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        <AppShell authState={{ signedIn: Boolean(session) }}>
+        <AppShell
+          authState={{
+            signedIn: Boolean(session),
+            avatarUrl: profile?.avatarUrl ?? null,
+            displayName: profile?.displayName ?? null,
+          }}
+        >
           {children}
         </AppShell>
       </body>

@@ -131,12 +131,11 @@ describe("signing and folder isolation", () => {
     const params = {
       folder: "synergy/avatars/abc",
       public_id: "avatar_123",
-      resource_type: "image",
       timestamp: "123",
     };
     const expected = createHash("sha1")
       .update(
-        `folder=synergy/avatars/abc&public_id=avatar_123&resource_type=image&timestamp=123secret`,
+        `folder=synergy/avatars/abc&public_id=avatar_123&timestamp=123secret`,
       )
       .digest("hex");
     expect(cloudinarySignature(params, "secret")).toBe(expected);

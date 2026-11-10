@@ -8,4 +8,8 @@
 export interface AuthNavState {
   /** True when the request carries a provider-verified member session. */
   signedIn: boolean;
+  /** Saved profile photo URL, when the member has one (TASK-007F). */
+  avatarUrl?: string | null;
+  /** Display name used for initials fallback (TASK-007F). */
+  displayName?: string | null;
 }

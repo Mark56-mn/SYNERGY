@@ -21,7 +21,8 @@ import { badRequest, internalError } from "@/server/http/errors";
  *    browser-supplied MIME string or filename alone.
  * 2. Files are capped at 4 MB and 8000×8000 px server-side.
  * 3. The Cloudinary signature is computed server-side over an allowlisted
- *    parameter set (folder, public_id, resource_type, timestamp). The
+ *    parameter set (folder, public_id, timestamp). `resource_type` is part of
+ *    the upload URL, not a signed parameter.
  *    browser never chooses the folder or public_id and never sees the
  *    API secret.
  * 4. The returned `secure_url` is verified to belong to the configured
@@ -243,10 +244,12 @@ export const cloudinaryAvatarUploader: CloudinaryUploader = async (input) => {
     .digest("hex")
     .slice(0, 12)}`;
 
+  // `resource_type` is part of the upload URL path, not a signed
+  // parameter — including it in the signature makes Cloudinary reject the
+  // upload with "Invalid Signature".
   const params: Record<string, string> = {
     folder,
     public_id: publicId,
-    resource_type: "image",
     timestamp,
   };
   const signature = cloudinarySignature(params, config.apiSecret);
@@ -259,9 +262,6 @@ export const cloudinaryAvatarUploader: CloudinaryUploader = async (input) => {
   form.append("signature", signature);
   form.append("folder", folder);
   form.append("public_id", publicId);
-  form.append("resource_type", "image");
-  form.append("overwrite", "false");
-  form.append("unique_filename", "true");
 
   const url = `https://api.cloudinary.com/v1_1/${encodeURIComponent(config.cloudName)}/image/upload`;
   let response: Response;
