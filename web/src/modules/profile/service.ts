@@ -83,6 +83,10 @@ export interface ProfileService {
     handle: string,
     session: Session | null,
   ): Promise<ProfileView | null>;
+  /** Visibility of a profile by verified identity id, or null when absent. */
+  getProfileVisibility(
+    identityId: string,
+  ): Promise<"public" | "private" | null>;
 }
 
 /**
@@ -91,31 +95,34 @@ export interface ProfileService {
  * persisted — this closes the "PATCH an arbitrary https URL" bypass.
  * In the stub/dev environment the https-only domain check still applies.
  */
-function assertProfileAvatarUrlAllowed(url: string | null | undefined): void {
+function assertProfileAvatarUrlAllowed(
+  url: string | null | undefined,
+  userId?: string,
+): void {
   let cloudinaryEnabled = false;
   let cloudName: string | undefined;
-  let supabaseEnabled = false;
-  let supabaseUrl: string | undefined;
-  let supabaseBucket: string | undefined;
+  let mediaEnabled = false;
   try {
     const env = getEnv();
     cloudinaryEnabled = env.MEDIA_PROVIDER_ADAPTER === "cloudinary";
     cloudName = env.CLOUDINARY_CLOUD_NAME;
-    if (env.SUPABASE_AUTH_URL && env.SUPABASE_AUTH_ANON_KEY) {
-      supabaseEnabled = true;
-      supabaseUrl = env.SUPABASE_AUTH_URL;
-      supabaseBucket = env.SUPABASE_STORAGE_BUCKET ?? "avatars";
+    if (env.SUPABASE_MEDIA_URL && env.SUPABASE_MEDIA_SECRET_KEY) {
+      mediaEnabled = true;
     }
   } catch {
     // Unconfigured environments keep the https-only contract.
   }
-  assertAvatarUrlAllowed(url, {
-    cloudinaryEnabled,
-    cloudName,
-    supabaseEnabled,
-    supabaseUrl,
-    supabaseBucket,
-  });
+  assertAvatarUrlAllowed(
+    url,
+    {
+      cloudinaryEnabled,
+      cloudName,
+      mediaEnabled,
+      mediaUrl: undefined,
+      mediaBucket: undefined,
+    },
+    userId,
+  );
 }
 
 /** Empty/whitespace text becomes SQL NULL so "clear the bio" is expressible. */
@@ -175,7 +182,7 @@ export function createProfileService(
       }
 
       const onboardingAvatar = nullableText(parsed.data.avatarUrl) ?? null;
-      assertProfileAvatarUrlAllowed(onboardingAvatar);
+      assertProfileAvatarUrlAllowed(onboardingAvatar, user.userId);
 
       try {
         return await repository.create({
@@ -219,7 +226,7 @@ export function createProfileService(
         patch.bio = nullableText(parsed.data.bio);
       if (parsed.data.avatarUrl !== undefined) {
         patch.avatarUrl = nullableText(parsed.data.avatarUrl);
-        assertProfileAvatarUrlAllowed(patch.avatarUrl);
+        assertProfileAvatarUrlAllowed(patch.avatarUrl, user.userId);
       }
       if (parsed.data.visibility !== undefined) {
         patch.visibility = parsed.data.visibility;
@@ -271,6 +278,13 @@ export function createProfileService(
         return null;
       }
       return { profile, isOwner };
+    },
+
+    async getProfileVisibility(
+      identityId: string,
+    ): Promise<"public" | "private" | null> {
+      const profile = await repository.findByIdentity(identityId);
+      return profile ? profile.visibility : null;
     },
   };
 }

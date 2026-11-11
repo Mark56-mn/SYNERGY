@@ -7,8 +7,8 @@ import {
   getProfileService,
 } from "@/modules/profile/provider";
 import {
-  deleteSupabaseAvatarByUrl,
-  isSupabaseAvatarUrl,
+  deleteSupabaseMediaAvatar,
+  isSupabaseMediaReference,
 } from "@/modules/profile/avatar-upload";
 import {
   toOwnerProfileDto,
@@ -68,33 +68,24 @@ export function createUpdateProfileRoute(deps: ProfileRouteDeps) {
         );
       }
       const previous = await deps.service.getOwnProfile(session);
-      const profile = await deps.service.updateOwnProfile(session, body!);
-
-      // Best-effort cleanup of a replaced/cleared Supabase avatar object.
+      const profile = await deps.service.updateOwnProfile(session, body!); // Best-effort cleanup of a replaced/cleared Supabase media avatar.
       if (
         previous?.avatarUrl &&
         previous.avatarUrl !== profile.avatarUrl &&
-        isSupabaseAvatarUrl(
-          previous.avatarUrl,
-          process.env.SUPABASE_AUTH_URL ?? "",
-          process.env.SUPABASE_STORAGE_BUCKET ?? "avatars",
-        )
+        isSupabaseMediaReference(previous.avatarUrl)
       ) {
         try {
           const { getEnv } = await import("@/server/env");
           const env = getEnv();
-          if (env.SUPABASE_AUTH_URL && env.SUPABASE_AUTH_ANON_KEY) {
-            const { readRequestAccessToken } =
-              await import("@/server/provider-access");
-            await deleteSupabaseAvatarByUrl(
+          if (env.SUPABASE_MEDIA_URL && env.SUPABASE_MEDIA_SECRET_KEY) {
+            await deleteSupabaseMediaAvatar(
+              {
+                url: env.SUPABASE_MEDIA_URL,
+                secretKey: env.SUPABASE_MEDIA_SECRET_KEY,
+                bucket: env.SUPABASE_MEDIA_BUCKET ?? "profile-photos",
+              },
               previous.avatarUrl,
               session.userId,
-              {
-                url: env.SUPABASE_AUTH_URL,
-                anonKey: env.SUPABASE_AUTH_ANON_KEY,
-                bucket: env.SUPABASE_STORAGE_BUCKET ?? "avatars",
-              },
-              readRequestAccessToken(request),
             );
           }
         } catch {

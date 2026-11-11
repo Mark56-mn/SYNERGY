@@ -13,25 +13,6 @@ import {
 
 import { badRequest, internalError } from "@/server/http/errors";
 
-/**
- * Avatar file validation + Cloudinary upload (TASK-007B).
- *
- * Security properties:
- *
- * 1. Only JPEG / PNG / WebP pass, verified by magic bytes — never by the
- *    browser-supplied MIME string or filename alone.
- * 2. Files are capped at 4 MB and 8000×8000 px server-side.
- * 3. The Cloudinary signature is computed server-side over an allowlisted
- *    parameter set (folder, public_id, timestamp). `resource_type` is part of
- *    the upload URL, not a signed parameter.
- *    browser never chooses the folder or public_id and never sees the
- *    API secret.
- * 4. The returned `secure_url` is verified to belong to the configured
- *    Cloudinary cloud and the caller's fixed folder before it is handed
- *    back; anything else is rejected and nothing is persisted.
- * 5. No internal storage identifiers (public_id) are returned.
- */
-
 export interface AvatarFile {
   bytes: Uint8Array;
   declaredType?: string;
@@ -50,29 +31,38 @@ export interface CloudinaryConfig {
   apiSecret: string;
 }
 
-export interface SupabaseConfig {
+export interface SupabaseMediaConfig {
   url: string;
-  anonKey: string;
+  secretKey: string;
   bucket: string;
 }
 
-/** Generic avatar uploader contract used by the route. */
+/** Backward-compatible alias for the previous Supabase config name. */
+export type SupabaseConfig = SupabaseMediaConfig;
+
 export type AvatarUploader = (
   input: ValidatedAvatarFile & {
     userId: string;
-    config: CloudinaryConfig | SupabaseConfig;
+    config: CloudinaryConfig | SupabaseMediaConfig;
     accessToken?: string | null;
     previousAvatarUrl?: string | null;
   },
 ) => Promise<UploadedAvatar>;
 
-/** Parse the leading bytes of JPEG/PNG/WebP to recover dimensions. */
+export interface UploadedAvatar {
+  /** Canonical stored reference (object path for Supabase media, URL for Cloudinary). */
+  avatarUrl: string;
+  mime: AllowedAvatarMime;
+  bytes: number;
+  width: number;
+  height: number;
+}
+
 export function parseImageDimensions(
   mime: AllowedAvatarMime,
   bytes: Uint8Array,
 ): { width: number; height: number } | null {
   if (mime === "image/png") {
-    // 8-byte signature, 4-byte length, "IHDR", width, height.
     if (bytes.length < 24) return null;
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     const width = view.getUint32(16, false);
@@ -102,7 +92,6 @@ export function parseImageDimensions(
     }
     return null;
   }
-  // WebP: RIFF header (12), then VP8 / VP8L / VP8X chunk.
   if (bytes.length < 30) return null;
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const fourCC = String.fromCharCode(
@@ -134,7 +123,6 @@ export function parseImageDimensions(
   return width > 0 && height > 0 ? { width, height } : null;
 }
 
-/** Sniff the real format from magic bytes (never trust the label). */
 export function sniffAvatarMime(bytes: Uint8Array): AllowedAvatarMime | null {
   if (
     bytes.length >= 8 &&
@@ -159,30 +147,26 @@ export function sniffAvatarMime(bytes: Uint8Array): AllowedAvatarMime | null {
   }
   if (
     bytes.length >= 12 &&
-    bytes[0] === 0x52 && // R
-    bytes[1] === 0x49 && // I
-    bytes[2] === 0x46 && // F
-    bytes[3] === 0x46 && // F
-    bytes[8] === 0x57 && // W
-    bytes[9] === 0x45 && // E
-    bytes[10] === 0x42 && // B
-    bytes[11] === 0x50 // P
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
   ) {
     return "image/webp";
   }
   return null;
 }
 
-/**
- * Validate an uploaded avatar file. The declared MIME is only a usability
- * hint; the sniffed bytes decide.
- */
 export function validateAvatarFile(file: AvatarFile): ValidatedAvatarFile {
   if (file.bytes.length === 0) {
     throw badRequest("The selected file is empty.");
   }
   if (file.bytes.length > AVATAR_MAX_BYTES) {
-    throw badRequest("The photo is too large. Choose a picture under 4 MB.");
+    throw badRequest("The photo is too large. Choose a picture under 5 MB.");
   }
 
   const mime = sniffAvatarMime(file.bytes);
@@ -213,13 +197,11 @@ export function validateAvatarFile(file: AvatarFile): ValidatedAvatarFile {
   return { ...file, mime, width: dims.width, height: dims.height };
 }
 
-/** Opaque, non-reversible folder key for the verified session. */
 export function avatarFolderForUser(userId: string): string {
   const digest = createHash("sha256").update(userId).digest("hex").slice(0, 16);
   return `synergy/avatars/${digest}`;
 }
 
-/** Cloudinary signature over the fixed, allowlisted parameter set. */
 export function cloudinarySignature(
   params: Record<string, string>,
   apiSecret: string,
@@ -233,105 +215,14 @@ export function cloudinarySignature(
   return createHash("sha1").update(toSign).digest("hex");
 }
 
-export interface UploadedAvatar {
-  /** Canonical HTTPS secure URL persisted as the avatar URL. */
-  avatarUrl: string;
-  mime: AllowedAvatarMime;
-  bytes: number;
-  width: number;
-  height: number;
-}
-
-export type CloudinaryUploader = (
-  input: ValidatedAvatarFile & { userId: string; config: CloudinaryConfig },
-) => Promise<UploadedAvatar>;
-
-/**
- * Production Cloudinary uploader: signed server-side upload. The browser
- * receives only the returned `secure_url` — never the secret, signature
- * ingredients beyond the single-use signature Cloudinary requires, or the
- * public_id.
- */
-export const cloudinaryAvatarUploader: CloudinaryUploader = async (input) => {
-  const { config, userId, bytes, mime, filename } = input;
-  const folder = avatarFolderForUser(userId);
-  const timestamp = String(Math.floor(Date.now() / 1000));
-  const publicId = `avatar_${createHash("sha256")
-    .update(userId + Date.now())
-    .digest("hex")
-    .slice(0, 12)}`;
-
-  // `resource_type` is part of the upload URL path, not a signed
-  // parameter — including it in the signature makes Cloudinary reject the
-  // upload with "Invalid Signature".
-  const params: Record<string, string> = {
-    folder,
-    public_id: publicId,
-    timestamp,
-  };
-  const signature = cloudinarySignature(params, config.apiSecret);
-
-  const form = new FormData();
-  const blob = new Blob([bytes as BlobPart], { type: mime });
-  form.append("file", blob, filename ?? `avatar.${mime.split("/")[1]}`);
-  form.append("api_key", config.apiKey);
-  form.append("timestamp", timestamp);
-  form.append("signature", signature);
-  form.append("folder", folder);
-  form.append("public_id", publicId);
-
-  const url = `https://api.cloudinary.com/v1_1/${encodeURIComponent(config.cloudName)}/image/upload`;
-  let response: Response;
-  try {
-    response = await fetch(url, { method: "POST", body: form });
-  } catch {
-    throw internalError();
-  }
-  if (!response.ok) {
-    throw internalError();
-  }
-
-  let body: unknown;
-  try {
-    body = await response.json();
-  } catch {
-    throw internalError();
-  }
-
-  const secureUrl =
-    typeof body === "object" && body !== null
-      ? (body as { secure_url?: unknown }).secure_url
-      : undefined;
-  if (typeof secureUrl !== "string") {
-    throw internalError();
-  }
-
-  // Verify the returned asset lives in the caller's folder and cloud.
-  if (!isCloudinaryAvatarUrl(secureUrl, config.cloudName)) {
-    throw internalError();
-  }
-
-  return {
-    avatarUrl: secureUrl,
-    mime,
-    bytes: bytes.length,
-    width: input.width,
-    height: input.height,
-  };
-};
-
-/**
- * Is a persisted URL one of ours? https, `res.cloudinary.com`, configured
- * cloud, and under the avatars folder. Anything else is rejected when a
- * Cloudinary environment is active.
- */
 export function isCloudinaryAvatarUrl(url: string, cloudName: string): boolean {
   try {
     const parsed = new URL(url);
     return (
       parsed.protocol === "https:" &&
       parsed.hostname === "res.cloudinary.com" &&
-      parsed.pathname.startsWith(`/${cloudName}/image/upload/`) &&
+      (cloudName === "" ||
+        parsed.pathname.startsWith(`/${cloudName}/image/upload/`)) &&
       parsed.pathname.includes("/synergy/avatars/")
     );
   } catch {
@@ -339,17 +230,43 @@ export function isCloudinaryAvatarUrl(url: string, cloudName: string): boolean {
   }
 }
 
-/**
- * When the deployment is Cloudinary-backed, every new avatar URL must be one
- * of ours — this closes the "PATCH an arbitrary https URL" bypass for those
- * deployments. Existing URLs in the stub/dev environment keep the https-only
- * check from the domain schema.
- */
-/**
- * Is a persisted URL a Supabase Storage public object URL for the configured
- * project and bucket? Used both for validation and for cleanup of replaced
- * avatars.
- */
+export function isLegacyCloudinaryAvatarUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === "https:" &&
+      parsed.hostname === "res.cloudinary.com" &&
+      parsed.pathname.includes("/image/upload/")
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** A stored Supabase media reference is a relative object path, never a URL. */
+export function isSupabaseMediaReference(value: string): boolean {
+  if (typeof value !== "string" || value.trim() === "") return false;
+  if (value.includes("://") || value.startsWith("/")) return false;
+  const segments = value.split("/");
+  if (segments.length < 2) return false;
+  if (
+    segments.some(
+      (segment) => segment === "" || segment === "." || segment === "..",
+    )
+  ) {
+    return false;
+  }
+  if (
+    segments.some((segment) => segment.includes("\\") || segment.includes("\0"))
+  ) {
+    return false;
+  }
+  const filename = segments[segments.length - 1] ?? "";
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+  return ext === "jpg" || ext === "jpeg" || ext === "png" || ext === "webp";
+}
+
+/** Backward-compatible alias for the previous public-URL helper. */
 export function isSupabaseAvatarUrl(
   url: string,
   supabaseUrl: string,
@@ -385,44 +302,80 @@ export function supabaseAvatarPathFromUrl(
   }
 }
 
-/** Delete a previously stored Supabase avatar object when it belongs to the member. */
-export async function deleteSupabaseAvatarByUrl(
-  url: string,
+export async function deleteSupabaseMediaAvatar(
+  config: SupabaseMediaConfig,
+  objectPath: string,
   userId: string,
-  config: SupabaseConfig,
-  accessToken?: string | null,
 ): Promise<void> {
-  if (!isSupabaseAvatarUrl(url, config.url, config.bucket)) return;
-  const objectPath = supabaseAvatarPathFromUrl(url, config.url, config.bucket);
-  if (!objectPath) return;
-  // Owner-restricted policy: the object path's first segment must be the
-  // member's verified user id.
+  if (!isSupabaseMediaReference(objectPath)) return;
   const ownerSegment = objectPath.split("/")[0];
   if (ownerSegment !== userId) return;
 
-  const client = createClient(config.url, config.anonKey, {
+  const client = createClient(config.url, config.secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: accessToken
-      ? { headers: { Authorization: `Bearer ${accessToken}` } }
-      : undefined,
   });
   await client.storage.from(config.bucket).remove([objectPath]);
 }
 
-export const supabaseAvatarUploader: AvatarUploader = async (input) => {
-  const { config, userId, bytes, mime, accessToken, previousAvatarUrl } =
+/** Backward-compatible alias. */
+export async function deleteSupabaseAvatarByUrl(
+  urlOrPath: string,
+  userId: string,
+  config: { url: string; secretKey?: string; anonKey?: string; bucket: string },
+): Promise<void> {
+  const secretKey = config.secretKey ?? config.anonKey ?? "";
+  if (!secretKey) return;
+  if (isSupabaseMediaReference(urlOrPath)) {
+    await deleteSupabaseMediaAvatar(
+      { url: config.url, secretKey, bucket: config.bucket },
+      urlOrPath,
+      userId,
+    );
+    return;
+  }
+  const objectPath = supabaseAvatarPathFromUrl(
+    urlOrPath,
+    config.url,
+    config.bucket,
+  );
+  if (!objectPath) return;
+  const ownerSegment = objectPath.split("/")[0];
+  if (ownerSegment !== userId) return;
+  const client = createClient(config.url, secretKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  await client.storage.from(config.bucket).remove([objectPath]);
+}
+
+export async function createSignedAvatarUrl(
+  config: SupabaseMediaConfig,
+  objectPath: string,
+  expiresInSeconds = 300,
+): Promise<string> {
+  if (!isSupabaseMediaReference(objectPath)) {
+    throw badRequest("Invalid avatar reference.");
+  }
+  const client = createClient(config.url, config.secretKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await client.storage
+    .from(config.bucket)
+    .createSignedUrl(objectPath, expiresInSeconds);
+  if (error || !data?.signedUrl) {
+    throw internalError();
+  }
+  return data.signedUrl;
+}
+
+export const supabaseMediaUploader: AvatarUploader = async (input) => {
+  const { config, userId, bytes, mime, previousAvatarUrl } =
     input as ValidatedAvatarFile & {
       userId: string;
-      config: SupabaseConfig;
-      accessToken?: string | null;
+      config: SupabaseMediaConfig;
       previousAvatarUrl?: string | null;
     };
 
-  if (!accessToken) {
-    throw internalError();
-  }
-
-  const bucket = config.bucket;
+  const secretConfig = config as SupabaseMediaConfig;
   const ext =
     mime === "image/jpeg" ? "jpg" : mime === "image/png" ? "png" : "webp";
   const publicId = `avatar_${createHash("sha256")
@@ -431,13 +384,12 @@ export const supabaseAvatarUploader: AvatarUploader = async (input) => {
     .slice(0, 12)}`;
   const objectPath = `${userId}/${publicId}.${ext}`;
 
-  const client = createClient(config.url, config.anonKey, {
+  const client = createClient(secretConfig.url, secretConfig.secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
   });
 
   const { error } = await client.storage
-    .from(bucket)
+    .from(secretConfig.bucket)
     .upload(objectPath, bytes, {
       contentType: mime,
       upsert: false,
@@ -447,31 +399,30 @@ export const supabaseAvatarUploader: AvatarUploader = async (input) => {
     throw internalError();
   }
 
-  const { data } = client.storage.from(bucket).getPublicUrl(objectPath);
-  const avatarUrl = data.publicUrl;
-  if (!isSupabaseAvatarUrl(avatarUrl, config.url, bucket)) {
-    throw internalError();
-  }
-
   // Replace without leaving an orphaned object behind.
-  if (
-    previousAvatarUrl &&
-    isSupabaseAvatarUrl(previousAvatarUrl, config.url, bucket)
-  ) {
+  if (previousAvatarUrl && isSupabaseMediaReference(previousAvatarUrl)) {
     try {
-      await deleteSupabaseAvatarByUrl(
-        previousAvatarUrl,
-        userId,
-        config,
-        accessToken,
-      );
+      await deleteSupabaseMediaAvatar(secretConfig, previousAvatarUrl, userId);
     } catch {
       // Best-effort cleanup; the new avatar is already stored.
+    }
+  } else if (
+    previousAvatarUrl &&
+    isSupabaseAvatarUrl(
+      previousAvatarUrl,
+      secretConfig.url,
+      secretConfig.bucket,
+    )
+  ) {
+    try {
+      await deleteSupabaseAvatarByUrl(previousAvatarUrl, userId, secretConfig);
+    } catch {
+      // Best-effort cleanup.
     }
   }
 
   return {
-    avatarUrl,
+    avatarUrl: objectPath,
     mime,
     bytes: bytes.length,
     width: input.width,
@@ -479,35 +430,58 @@ export const supabaseAvatarUploader: AvatarUploader = async (input) => {
   };
 };
 
+/** Backward-compatible alias for the previous uploader name. */
+export const supabaseAvatarUploader = supabaseMediaUploader;
+
 export function assertAvatarUrlAllowed(
-  url: string | null | undefined,
+  value: string | null | undefined,
   opts: {
     cloudinaryEnabled: boolean;
     cloudName?: string;
+    mediaEnabled?: boolean;
+    mediaUrl?: string;
+    mediaBucket?: string;
     supabaseEnabled?: boolean;
     supabaseUrl?: string;
     supabaseBucket?: string;
   },
+  userId?: string,
 ): void {
-  if (!url) return;
+  if (!value) return;
 
-  // In stub/dev mode (no provider configured) any https URL is accepted.
   const cloudinaryActive = opts.cloudinaryEnabled && !!opts.cloudName;
-  const supabaseActive = Boolean(
-    opts.supabaseEnabled && opts.supabaseUrl && opts.supabaseBucket,
+  const mediaActive = Boolean(
+    opts.mediaEnabled ??
+    (opts.supabaseEnabled && opts.supabaseUrl && opts.supabaseBucket),
   );
-  if (!cloudinaryActive && !supabaseActive) return;
 
-  if (cloudinaryActive && isCloudinaryAvatarUrl(url, opts.cloudName!)) return;
-  if (
-    supabaseActive &&
-    isSupabaseAvatarUrl(url, opts.supabaseUrl!, opts.supabaseBucket!)
-  )
+  if (!cloudinaryActive && !mediaActive) return;
+
+  if (isLegacyCloudinaryAvatarUrl(value)) return;
+
+  if (cloudinaryActive && isCloudinaryAvatarUrl(value, opts.cloudName!)) {
     return;
+  }
 
-  // Backward-compatible fallback: previously stored Cloudinary URLs remain
-  // valid even after the avatar path migrates to Supabase.
-  if (isCloudinaryAvatarUrl(url, opts.cloudName ?? "")) return;
+  if (mediaActive) {
+    if (isSupabaseMediaReference(value)) {
+      if (userId && value.split("/")[0] !== userId) {
+        throw badRequest(
+          "Profile photos must be uploaded through SYNERGY photo selection.",
+        );
+      }
+      return;
+    }
+    const mediaUrl = opts.mediaUrl ?? opts.supabaseUrl;
+    const mediaBucket = opts.mediaBucket ?? opts.supabaseBucket;
+    if (
+      mediaUrl &&
+      mediaBucket &&
+      isSupabaseAvatarUrl(value, mediaUrl, mediaBucket)
+    ) {
+      return;
+    }
+  }
 
   throw badRequest(
     "Profile photos must be uploaded through SYNERGY photo selection.",

@@ -1,6 +1,6 @@
-# TASK-007G — Fix Profile UI and Migrate Avatar Storage to Supabase
+# TASK-007G — Fix Profile UI and Migrate Avatars to Supabase Media Storage
 
-Status: **IMPLEMENTED — VERIFIED LOCALLY; LIVE SUPABASE UPLOAD BLOCKED ON OWNER APPROVAL**
+Status: **IMPLEMENTED — VERIFIED LOCALLY; LIVE MEDIA ROUND-TRIP BLOCKED ON OWNER SECRET CONFIGURATION**
 
 Branch: `task/TASK-007G-profile-ui-and-supabase-avatar-storage`
 
@@ -8,43 +8,55 @@ Base: `task/TASK-007F-profile-photo-and-account-navigation` at `fe5001a`
 
 ## Summary
 
-- Migrated the profile-avatar upload path from Cloudinary to Supabase Storage.
-- Neon remains the primary application database; only the avatar object is stored
-  in Supabase Storage, with its public URL persisted in Neon `profiles.avatar_url`.
-- Preserved previously stored Cloudinary URLs as a backward-compatible
-  fallback (validation still accepts them).
-- Added a global error boundary and loading state so a failed profile read no
-  longer surfaces as a blank white screen.
+- Diagnosed the profile/account surface and hardened it so a failed profile read
+  no longer renders a blank screen: root layout catches profile-read failures and
+  global `error.tsx` / `loading.tsx` boundaries exist.
+- Migrated profile avatar file storage from Cloudinary to the separate
+  `synergy-media` Supabase project (`profile-photos` bucket, private).
+- Neon remains the primary application database. Neon stores only the avatar
+  object path/reference in `profiles.avatar_url`; image bytes are never stored
+  in Neon.
+- Cloudinary remains unchanged for post media.
+- Uploads and downloads are server-mediated with `SUPABASE_MEDIA_SECRET_KEY`;
+  the secret is never exposed to browser code, public env, logs or bundles.
+- Private bucket display uses short-lived signed URLs generated server-side
+  after profile-visibility checks.
+
+## Environment variables (names only)
+
+- `SUPABASE_MEDIA_URL`
+- `SUPABASE_MEDIA_SECRET_KEY`
+- `SUPABASE_MEDIA_BUCKET` (optional, default `profile-photos`)
 
 ## Changed files
 
-- `web/src/modules/profile/avatar-upload.ts`: added `SupabaseConfig`, `isSupabaseAvatarUrl`,
-  `supabaseAvatarPathFromUrl`, `deleteSupabaseAvatarByUrl`, `supabaseAvatarUploader`;
-  updated `assertAvatarUrlAllowed` to allow Supabase URLs (and legacy Cloudinary).
-- `web/src/app/api/v1/profile/avatar-upload/route.ts`: now uses Supabase Storage;
-  503 names `SUPABASE_AUTH_URL` / `SUPABASE_AUTH_ANON_KEY`.
-- `web/src/app/api/v1/profile/route.ts`: best-effort cleanup of replaced/cleared
-  Supabase avatar objects on PATCH.
-- `web/src/modules/profile/service.ts`: allow Supabase URLs in validation.
-- `web/src/app/layout.tsx`: profile read wrapped so a failure degrades to initials
-  instead of blanking the app.
-- `web/src/app/error.tsx`, `web/src/app/loading.tsx`: global loading/error states.
-- `web/src/components/profile/AvatarUpload.tsx`: sends `previousAvatarUrl` for cleanup.
-- `web/src/server/env.ts`, `.env.example`: `SUPABASE_STORAGE_BUCKET` (default `avatars`).
+- `packages/domain/src/users-and-profiles.ts`: avatar cap raised to 5 MB.
+- `web/src/server/env.ts`, `.env.example`: media env contract.
+- `web/src/modules/profile/avatar-upload.ts`: media config, secret-key uploader,
+  owner-scoped paths, signed URL helper, media reference validation,
+  backward-compatible Cloudinary fallback.
+- `web/src/app/api/v1/profile/avatar-upload/route.ts`: media upload route.
+- `web/src/app/api/v1/profile/avatar/route.ts`: signed display URL route.
+- `web/src/app/api/v1/profile/route.ts`: best-effort cleanup of replaced media.
+- `web/src/modules/profile/service.ts`: media-aware avatar validation + visibility helper.
+- `web/src/components/ui/Avatar.tsx`: resolves stored media paths to signed display URLs.
+- `web/src/components/profile/AvatarUpload.tsx`: 5 MB label and media path handling.
 
-## Supabase project
+## Supabase media project
 
-- Configured project reference: `gqvtpvnipfrcqfkdevsx` (SYNERGY, ACTIVE_HEALTHY, eu-central-1).
-- Integration lists this project as active. No bucket exists yet.
+- Project: `synergy-media`
+- Ref: `vblzbmrdlfusofawvoni`
+- Region: `eu-west-2`
+- URL: `https://vblzbmrdlfusofawvoni.supabase.co`
+- Bucket: `profile-photos` (private, 5 MB max, JPEG/PNG/WebP)
+- Bucket already exists; do not recreate it.
 
-## Required owner setup (not performed by this agent)
+## Owner setup still required
 
-1. Approve creation of a Supabase Storage bucket named `avatars` (or set
-   `SUPABASE_STORAGE_BUCKET`).
-2. Create owner-restricted RLS policies:
-   - INSERT/UPDATE/DELETE only when `(storage.foldername(name))[1] = auth.uid()::text`.
-   - SELECT public (or authenticated) for avatar delivery.
-3. Set Preview env `SUPABASE_STORAGE_BUCKET=avatars` (optional, defaults to avatars).
+1. Set Preview env `SUPABASE_MEDIA_URL` and `SUPABASE_MEDIA_SECRET_KEY`.
+2. Optionally set `SUPABASE_MEDIA_BUCKET=profile-photos`.
+3. Ensure bucket policies allow server-side secret-key access; browser must not
+   receive the secret.
 
 ## Verification
 
@@ -55,6 +67,5 @@ Base: `task/TASK-007F-profile-photo-and-account-navigation` at `fe5001a`
 - `npm run build` 0
 - `npm run secret-scan` 0
 - `npm run check:boundaries` 0
-- Live Supabase upload round-trip: **NOT RUN** — bucket/policies not created
-  (owner approval required per infrastructure safety gate).
-- Account menu touch/links: covered by existing `tests/account-menu.test.tsx`.
+- Live media upload/display round-trip: **NOT RUN** — owner secret not configured
+  in this environment. Endpoint correctly returns 503 when unconfigured.

@@ -86,8 +86,8 @@ describe("sniffing and validation", () => {
     expect(sniffAvatarMime(new TextEncoder().encode("GIF89a"))).toBeNull();
   });
 
-  it("rejects oversize files before any sniffing (4 MB cap)", () => {
-    const big = new Uint8Array(4 * 1024 * 1024 + 1);
+  it("rejects oversize files before any sniffing (5 MB cap)", () => {
+    const big = new Uint8Array(5 * 1024 * 1024 + 1);
     expect(() =>
       validateAvatarFile({ bytes: big, declaredType: "image/png" }),
     ).toThrow(/too large/i);
@@ -221,8 +221,8 @@ describe("POST /api/v1/profile/avatar-upload", () => {
     const response = await route(multipart(pngFile(), authed("token-a")));
     expect(response.status).toBe(503);
     const body = (await response.json()) as { error: { message: string } };
-    expect(body.error.message).toContain("SUPABASE_AUTH_URL");
-    expect(body.error.message).toContain("SUPABASE_AUTH_ANON_KEY");
+    expect(body.error.message).toContain("SUPABASE_MEDIA_URL");
+    expect(body.error.message).toContain("SUPABASE_MEDIA_SECRET_KEY");
   });
 
   it("uploads for the verified caller only and returns only the URL", async () => {

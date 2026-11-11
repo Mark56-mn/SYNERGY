@@ -79,6 +79,12 @@ export function rateLimited(
   return new AppError("rate_limited", safeMessage);
 }
 
+export function serviceUnavailable(
+  safeMessage = "This service is not configured yet.",
+): AppError {
+  return new AppError("service_unavailable", safeMessage);
+}
+
 export function internalError(): AppError {
   // Unhandled failures collapse into one generic shape, with real details
   // going to the server-side (redacted) logs only.

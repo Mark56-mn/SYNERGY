@@ -1,31 +1,21 @@
-# TASK-007G — Fix Profile UI and Migrate Avatar Storage to Supabase handoff
+# TASK-007G handoff
 
 - **Task:** TASK-007G
-- **Status:** IMPLEMENTED — VERIFIED LOCALLY; LIVE SUPABASE UPLOAD BLOCKED ON OWNER APPROVAL
+- **Status:** IMPLEMENTED — VERIFIED LOCALLY; LIVE MEDIA ROUND-TRIP BLOCKED ON OWNER SECRET CONFIGURATION
 - **Branch:** `task/TASK-007G-profile-ui-and-supabase-avatar-storage`
-- **Base:** `task/TASK-007F-profile-photo-and-account-navigation` at `fe5001a`
 
-## Root causes addressed
+## Architecture
 
-1. Profile avatar uploads targeted Cloudinary; migrated to Supabase Storage.
-2. Root layout awaited profile-service construction outside its catch, so an
-   unavailable database could surface as a blank page; wrapped in try/catch and
-   added global error/loading boundaries.
-
-## Infrastructure safety gate
-
-- Configured project reference `gqvtpvnipfrcqfkdevsx` (SYNERGY) is ACTIVE_HEALTHY.
-- No `avatars` bucket exists. Per the safety gate, no bucket or policy was
-  created without approval. Owner must create the bucket and RLS policies.
-
-## Env vars (names only)
-
-- `SUPABASE_AUTH_URL` (existing)
-- `SUPABASE_AUTH_ANON_KEY` (existing)
-- `SUPABASE_STORAGE_BUCKET` (optional, default `avatars`)
+- Media project is separate from SYNERGY Auth.
+- Env: `SUPABASE_MEDIA_URL`, `SUPABASE_MEDIA_SECRET_KEY`,
+  optional `SUPABASE_MEDIA_BUCKET` (default `profile-photos`).
+- Neon stores only avatar object paths in `profiles.avatar_url`.
+- Private bucket display uses `GET /api/v1/profile/avatar?path=...`, which
+  checks profile visibility then redirects to a short-lived signed URL.
+- Cloudinary remains for post media; legacy Cloudinary avatar URLs remain valid.
 
 ## Gates
 
-- format 0, lint 0, typecheck (web + android) 0, tests 28/222, build 0,
-  secret-scan 0, boundaries 0.
-- Live Supabase round-trip: NOT RUN (bucket/policies missing).
+- format 0, lint 0, typecheck 0, tests 28/222, build 0, secret-scan 0,
+  boundaries 0.
+- Live media round-trip not run (secret not configured; endpoint returns 503).

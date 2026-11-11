@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 
-const MAX_BYTES_LABEL = "4 MB";
+const MAX_BYTES_LABEL = "5 MB";
 
 /**
  * Phone-gallery photo control (TASK-007B).

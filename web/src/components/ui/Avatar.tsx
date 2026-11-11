@@ -22,6 +22,21 @@ const tones = [
   "bg-surface-raised text-ink-muted",
 ];
 
+function resolveAvatarSrc(src?: string | null): string | null {
+  if (!src) return null;
+  if (src.startsWith("/")) return src;
+  if (/^https?:\/\//i.test(src)) {
+    try {
+      const url = new URL(src);
+      return url.protocol === "https:" ? src : null;
+    } catch {
+      return null;
+    }
+  }
+  // Stored Supabase media object path -> server-signed display URL.
+  return `/api/v1/profile/avatar?path=${encodeURIComponent(src)}`;
+}
+
 function initialsOf(name: string): string {
   return name
     .split(/\s+/)
@@ -56,29 +71,23 @@ export function Avatar({
   src?: string | null;
   className?: string;
 }) {
-  if (src) {
-    try {
-      const url = new URL(src);
-      if (url.protocol === "https:") {
-        return (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={src}
-            alt={`${name}${demo ? " (demonstration profile)" : " profile photo"}`}
-            width={64}
-            height={64}
-            loading="lazy"
-            className={cn(
-              "inline-flex shrink-0 select-none items-center justify-center rounded-full border border-border object-cover",
-              sizes[size],
-              className,
-            )}
-          />
-        );
-      }
-    } catch {
-      // Fall through to initials when the stored value is not a usable URL.
-    }
+  const displaySrc = resolveAvatarSrc(src);
+  if (displaySrc) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={displaySrc}
+        alt={`${name}${demo ? " (demonstration profile)" : " profile photo"}`}
+        width={64}
+        height={64}
+        loading="lazy"
+        className={cn(
+          "inline-flex shrink-0 select-none items-center justify-center rounded-full border border-border object-cover",
+          sizes[size],
+          className,
+        )}
+      />
+    );
   }
   return (
     <span

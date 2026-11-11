@@ -32,7 +32,7 @@ export const DISPLAY_NAME_MAX_LENGTH = 80;
 export const BIO_MAX_LENGTH = 280;
 export const AVATAR_URL_MAX_LENGTH = 2048;
 /** TASK-007B: phone-gallery upload bounds. */
-export const AVATAR_MAX_BYTES = 4 * 1024 * 1024;
+export const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
 export const AVATAR_MAX_WIDTH = 8000;
 export const AVATAR_MAX_HEIGHT = 8000;
 export const ALLOWED_AVATAR_MIME_TYPES = [
