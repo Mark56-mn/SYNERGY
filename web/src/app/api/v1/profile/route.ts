@@ -7,9 +7,9 @@ import {
   getProfileService,
 } from "@/modules/profile/provider";
 import {
+  canonicalizeSupabaseAvatarReference,
   deleteSupabaseMediaAvatar,
   isSupabaseMediaReference,
-  supabaseAvatarPathFromUrl,
 } from "@/modules/profile/avatar-upload";
 import {
   toOwnerProfileDto,
@@ -79,7 +79,15 @@ export function createUpdateProfileRoute(deps: ProfileRouteDeps) {
         // error. The previously saved avatar is never touched here.
         const pending =
           typeof body?.avatarUrl === "string" ? body.avatarUrl.trim() : null;
-        if (pending && pending !== previous?.avatarUrl) {
+        const previousPath = canonicalizeSupabaseAvatarReference(
+          previous?.avatarUrl,
+        );
+        const pendingPath = canonicalizeSupabaseAvatarReference(pending);
+        if (
+          pendingPath &&
+          pendingPath !== previousPath &&
+          pendingPath.split("/")[0] === session.userId
+        ) {
           try {
             const { getEnv } = await import("@/server/env");
             const env = getEnv();
@@ -89,22 +97,19 @@ export function createUpdateProfileRoute(deps: ProfileRouteDeps) {
                 secretKey: env.SUPABASE_MEDIA_SECRET_KEY,
                 bucket: env.SUPABASE_MEDIA_BUCKET ?? "profile-photos",
               };
-              let pendingPath = pending;
-              if (!isSupabaseMediaReference(pendingPath)) {
-                pendingPath =
-                  supabaseAvatarPathFromUrl(
-                    pendingPath,
-                    config.url,
-                    config.bucket,
-                  ) ?? pendingPath;
-              }
+              const canonicalPending =
+                canonicalizeSupabaseAvatarReference(
+                  pendingPath,
+                  config.url,
+                  config.bucket,
+                ) ?? pendingPath;
               if (
-                isSupabaseMediaReference(pendingPath) &&
-                pendingPath.split("/")[0] === session.userId
+                isSupabaseMediaReference(canonicalPending) &&
+                canonicalPending.split("/")[0] === session.userId
               ) {
                 await deleteSupabaseMediaAvatar(
                   config,
-                  pendingPath,
+                  canonicalPending,
                   session.userId,
                 );
               }
@@ -117,24 +122,34 @@ export function createUpdateProfileRoute(deps: ProfileRouteDeps) {
       }
 
       // Best-effort cleanup of a replaced/cleared Supabase media avatar.
-      if (
-        previous?.avatarUrl &&
-        previous.avatarUrl !== profile.avatarUrl &&
-        isSupabaseMediaReference(previous.avatarUrl)
-      ) {
+      const previousAvatarPath = canonicalizeSupabaseAvatarReference(
+        previous?.avatarUrl,
+      );
+      const nextAvatarPath = canonicalizeSupabaseAvatarReference(
+        profile.avatarUrl,
+      );
+      if (previousAvatarPath && previousAvatarPath !== nextAvatarPath) {
         try {
           const { getEnv } = await import("@/server/env");
           const env = getEnv();
           if (env.SUPABASE_MEDIA_URL && env.SUPABASE_MEDIA_SECRET_KEY) {
-            await deleteSupabaseMediaAvatar(
-              {
-                url: env.SUPABASE_MEDIA_URL,
-                secretKey: env.SUPABASE_MEDIA_SECRET_KEY,
-                bucket: env.SUPABASE_MEDIA_BUCKET ?? "profile-photos",
-              },
-              previous.avatarUrl,
-              session.userId,
-            );
+            const canonicalPrevious =
+              canonicalizeSupabaseAvatarReference(
+                previousAvatarPath,
+                env.SUPABASE_MEDIA_URL,
+                env.SUPABASE_MEDIA_BUCKET ?? "profile-photos",
+              ) ?? previousAvatarPath;
+            if (isSupabaseMediaReference(canonicalPrevious)) {
+              await deleteSupabaseMediaAvatar(
+                {
+                  url: env.SUPABASE_MEDIA_URL,
+                  secretKey: env.SUPABASE_MEDIA_SECRET_KEY,
+                  bucket: env.SUPABASE_MEDIA_BUCKET ?? "profile-photos",
+                },
+                canonicalPrevious,
+                session.userId,
+              );
+            }
           }
         } catch {
           // Cleanup is best-effort; the profile update already succeeded.

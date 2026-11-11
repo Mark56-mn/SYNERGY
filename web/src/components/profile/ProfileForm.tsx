@@ -63,10 +63,6 @@ export function ProfileForm({
   const pendingAvatarRef = useRef<string | null>(null);
 
   useEffect(() => {
-    pendingAvatarRef.current = pendingAvatarPath;
-  }, [pendingAvatarPath]);
-
-  useEffect(() => {
     return () => {
       const path = pendingAvatarRef.current;
       if (!path) return;
@@ -91,6 +87,10 @@ export function ProfileForm({
       });
     } catch {
       // Best-effort cleanup must never mask the original save error.
+    } finally {
+      // Update the ref synchronously once cleanup has completed.
+      pendingAvatarRef.current = null;
+      setPendingAvatarPath(null);
     }
   }
 
@@ -180,6 +180,7 @@ export function ProfileForm({
       }
 
       setPendingAvatarPath(null);
+      pendingAvatarRef.current = null;
       setStatus(isOnboarding ? "Profile created." : "Profile updated.");
       router.push("/profile");
       router.refresh();
@@ -272,6 +273,10 @@ export function ProfileForm({
           setAvatarUrl(url);
           if (url && url !== (initial?.avatarUrl ?? "")) {
             setPendingAvatarPath(url);
+            pendingAvatarRef.current = url;
+          } else {
+            setPendingAvatarPath(null);
+            pendingAvatarRef.current = null;
           }
           setFieldErrors((previous) => ({ ...previous, avatarUrl: undefined }));
         }}

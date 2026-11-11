@@ -302,6 +302,59 @@ export function supabaseAvatarPathFromUrl(
   }
 }
 
+/**
+ * Normalize any supported Supabase avatar reference (object path or public
+ * storage URL) to its canonical object path. Returns null when the value is
+ * not a supported Supabase reference.
+ */
+export function canonicalizeSupabaseAvatarReference(
+  value: string | null | undefined,
+  supabaseUrl?: string,
+  bucket?: string,
+): string | null {
+  if (typeof value !== "string" || value.trim() === "") return null;
+  const trimmed = value.trim();
+  if (isSupabaseMediaReference(trimmed)) return trimmed;
+  if (supabaseUrl && bucket) {
+    return supabaseAvatarPathFromUrl(trimmed, supabaseUrl, bucket);
+  }
+  // Fall back to parsing the bucket out of the URL path when no config is
+  // available, so callers can still canonicalise stored URLs.
+  try {
+    const parsed = new URL(trimmed);
+    const match = parsed.pathname.match(
+      /\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/,
+    );
+    if (!match?.[2]) return null;
+    if (bucket && match[1] !== bucket) return null;
+    return decodeURIComponent(match[2]);
+  } catch {
+    return null;
+  }
+}
+
+export const normalizeSupabaseAvatarReference =
+  canonicalizeSupabaseAvatarReference;
+export const canonicalAvatarPath = canonicalizeSupabaseAvatarReference;
+export const toSupabaseAvatarPath = canonicalizeSupabaseAvatarReference;
+export const supabaseAvatarPathFromReference =
+  canonicalizeSupabaseAvatarReference;
+
+export function sameSupabaseAvatarReference(
+  a: string | null | undefined,
+  b: string | null | undefined,
+  supabaseUrl?: string,
+  bucket?: string,
+): boolean {
+  const left = canonicalizeSupabaseAvatarReference(a, supabaseUrl, bucket);
+  const right = canonicalizeSupabaseAvatarReference(b, supabaseUrl, bucket);
+  if (left && right) return left === right;
+  if (typeof a === "string" && typeof b === "string") {
+    return a.trim() === b.trim();
+  }
+  return false;
+}
+
 export async function deleteSupabaseMediaAvatar(
   config: SupabaseMediaConfig,
   objectPath: string,

@@ -9,6 +9,7 @@ import {
   AppError,
   badRequest,
   forbidden,
+  internalError,
   serviceUnavailable,
 } from "@/server/http/errors";
 import { createApiRoute } from "@/server/http/handler";
@@ -19,9 +20,9 @@ import {
 } from "@/server/ratelimit";
 import { getEnv } from "@/server/env";
 import {
+  canonicalizeSupabaseAvatarReference,
   deleteSupabaseMediaAvatar,
   isSupabaseMediaReference,
-  supabaseAvatarPathFromUrl,
   type SupabaseMediaConfig,
 } from "@/modules/profile/avatar-upload";
 import type { ProfileService } from "@/modules/profile/service";
@@ -129,16 +130,11 @@ export function createAvatarCleanupRoute(deps: AvatarCleanupRouteDeps) {
 
       const trimmed = candidate.trim();
 
-      let objectPath: string | null = null;
-      if (isSupabaseMediaReference(trimmed)) {
-        objectPath = trimmed;
-      } else {
-        objectPath = supabaseAvatarPathFromUrl(
-          trimmed,
-          config.url,
-          config.bucket,
-        );
-      }
+      const objectPath = canonicalizeSupabaseAvatarReference(
+        trimmed,
+        config.url,
+        config.bucket,
+      );
 
       if (!objectPath || !isSupabaseMediaReference(objectPath)) {
         throw badRequest("A valid pending avatar reference is required.");
@@ -149,34 +145,44 @@ export function createAvatarCleanupRoute(deps: AvatarCleanupRouteDeps) {
         throw forbidden("You cannot clean up another member's photo.");
       }
 
+      // Fail closed: if the current profile cannot be read reliably, do not
+      // delete anything.
       const service = deps.service ?? deps.profileService;
       let currentAvatarUrl: string | null = null;
       if (service) {
         try {
           const profile = await service.getOwnProfile(user);
           currentAvatarUrl = profile?.avatarUrl ?? null;
-        } catch {
-          // Profile lookup is best-effort here; cleanup still enforces ownership.
+        } catch (error) {
+          if (error instanceof AppError) throw error;
+          throw internalError();
         }
       } else if (deps.getProfile) {
         try {
           const profile = await deps.getProfile(user);
           currentAvatarUrl = profile?.avatarUrl ?? null;
-        } catch {
-          // Best-effort.
+        } catch (error) {
+          if (error instanceof AppError) throw error;
+          throw internalError();
         }
       }
 
-      if (currentAvatarUrl && currentAvatarUrl === objectPath) {
+      const currentPath = canonicalizeSupabaseAvatarReference(
+        currentAvatarUrl,
+        config.url,
+        config.bucket,
+      );
+
+      if (currentPath && currentPath === objectPath) {
         throw new AppError(
           "conflict",
           "That photo is already saved to your profile.",
         );
       }
       if (
-        currentAvatarUrl &&
-        isSupabaseMediaReference(currentAvatarUrl) &&
-        currentAvatarUrl === trimmed
+        !currentPath &&
+        typeof currentAvatarUrl === "string" &&
+        currentAvatarUrl.trim() === trimmed
       ) {
         throw new AppError(
           "conflict",
