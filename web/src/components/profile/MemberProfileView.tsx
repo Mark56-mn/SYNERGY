@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { Avatar } from "@/components/ui/Avatar";
+import { Avatar, resolveAvatarSrc } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
+import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/States";
 import { Tabs } from "@/components/ui/Tabs";
 
@@ -49,7 +50,10 @@ export function MemberProfileView({
   isOwner: boolean;
 }) {
   const [tab, setTab] = useState("about");
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const [photoUsable, setPhotoUsable] = useState(true);
   const hintId = `member-profile-${profile.username}-actions`;
+  const photoSrc = resolveAvatarSrc(profile.avatarUrl);
 
   return (
     <div>
@@ -60,13 +64,32 @@ export function MemberProfileView({
 
       <div className="px-4 sm:px-5">
         <div className="-mt-10 flex items-end justify-between gap-3">
-          <Avatar
-            name={profile.displayName}
-            seed={profile.username}
-            size="xl"
-            src={profile.avatarUrl}
-            className="border-4 border-bg"
-          />
+          {photoSrc && photoUsable ? (
+            <button
+              type="button"
+              onClick={() => setPhotoOpen(true)}
+              aria-label={`Expand ${profile.displayName} profile photo`}
+              className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+            >
+              <Avatar
+                name={profile.displayName}
+                seed={profile.username}
+                size="xl"
+                src={profile.avatarUrl}
+                className="border-4 border-bg"
+                onUsabilityChange={setPhotoUsable}
+              />
+            </button>
+          ) : (
+            <Avatar
+              name={profile.displayName}
+              seed={profile.username}
+              size="xl"
+              src={profile.avatarUrl}
+              className="border-4 border-bg"
+              onUsabilityChange={setPhotoUsable}
+            />
+          )}
           {isOwner ? (
             <Link
               href="/profile/edit"
@@ -176,6 +199,23 @@ export function MemberProfileView({
           />
         ) : null}
       </div>
+
+      <Dialog
+        open={photoOpen}
+        onClose={() => setPhotoOpen(false)}
+        title={`${profile.displayName} profile photo`}
+        description="Full-screen profile photo. Press Escape or use Close to dismiss."
+        className="h-dvh max-h-dvh w-full max-w-none rounded-none border-0 bg-bg sm:h-dvh sm:max-w-none sm:rounded-none"
+      >
+        {photoSrc && photoUsable ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photoSrc}
+            alt={`${profile.displayName} profile photo`}
+            className="mx-auto max-h-[78dvh] w-auto max-w-full rounded-lg object-contain"
+          />
+        ) : null}
+      </Dialog>
     </div>
   );
 }
