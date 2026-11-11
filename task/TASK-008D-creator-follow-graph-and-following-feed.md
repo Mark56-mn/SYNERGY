@@ -1,6 +1,8 @@
 # TASK-008D — Creator Follow Graph + Following Feed
 
-Status: **SPEC READY — AWAITING OWNER APPROVAL; NOT IMPLEMENTED**
+Status: **APPROVED — IMPLEMENTATION BLOCKED ON OWNER ACCEPTANCE OF TASK-008A/B/C; NOT IMPLEMENTED**
+
+Approved: 2026-11-11. Task ID: **TASK-008D** (owner decision; existing TASK-009A provider/listings remains unchanged).
 
 Requested name: **TASK-009A — Creator Follow Graph + Following Feed** (2026-11-11 mission).
 
@@ -12,24 +14,20 @@ Database: isolated Neon branch `br-steep-field-b3nti5ov` only. **No migration ha
 been generated or applied.** Production, `main` and Vercel Production remain
 untouched.
 
-## 0. ID conflict that must be resolved before implementation
+## 0. ID decision — resolved
 
-`task/TASK-009A-provider-profiles-and-listings.md` already owns the
-`TASK-009A` identifier and is part of roadmap item 9. This specification does
-**not** replace, rename or supersede that task. It is filed provisionally as
-**TASK-008D** because it is the next slice of roadmap item 8 and follows
-TASK-008A/B/C directly.
+On 2026-11-11 the owner approved **TASK-008D** as the task ID for this slice and
+directed that the existing `task/TASK-009A-provider-profiles-and-listings.md`
+remain unchanged. Do not rename, overwrite or merge that provider/listings task
+into this specification.
 
-Owner decision required:
+The earlier collision is retained here as context: the 2026-11-11 mission
+requested this slice as `TASK-009A`, but that identifier already belongs to
+roadmap item 9. TASK-008D is the approved follow-graph slice under roadmap item
+8.
 
-1. **Recommended:** keep this slice as TASK-008D, leave provider/listings as
-   TASK-009A, and update the roadmap/handoff cross-references after approval.
-2. Or explicitly reassign TASK-009A to the follow graph and renumber the
-   provider/listings slice. That is a material roadmap change and must be done
-   deliberately, not by overwriting an existing task file.
-
-Until that decision is recorded, do not implement this specification and do not
-edit the existing TASK-009A file.
+Implementation remains blocked until the owner accepts TASK-008A/B/C. See the
+owner-acceptance checklist in `handoff/TASK-008D.md` §10.
 
 ## 1. Goal
 
@@ -55,9 +53,9 @@ are owner-scoped and all feed reads enforce profile visibility in SQL.
 - `MASTER_BLUEPRINT.md`: chronological/following feed is a user control, not a
   ranking promise.
 
-### 2.1 Material product defaults proposed by this spec
+### 2.1 Approved product defaults
 
-These are the decisions the owner is approving, not implementation details:
+The owner approved these defaults on 2026-11-11. They are binding for TASK-008D:
 
 1. **Simple accepted follows only.** Following a public creator creates the edge
    immediately. There are no follow requests, pending states, approvals,
@@ -72,9 +70,9 @@ These are the decisions the owner is approving, not implementation details:
    `followers` profile or post visibility value. Follower-scoped profile/content
    visibility is a larger privacy-model change and is not implemented by a
    follow-button slice. The unused `contentVisibilitySchema` value `followers`
-   in `packages/domain/src/content.ts` stays unused. If the owner reads
-   “follow visibility” in TASK-008 as “followers-only profiles/posts”, this
-   specification must be expanded and re-approved before implementation.
+   in `packages/domain/src/content.ts` stays unused. The owner approved this
+   boundary on 2026-11-11; follower-scoped visibility and private-profile follow
+   requests remain future privacy-task work.
 4. **Following feed is followed public creators plus the viewer's own posts.**
    This preserves the TASK-008A rule that a member can always see their own
    content in a feed. Posts by public creators the viewer does not follow are
@@ -87,6 +85,10 @@ These are the decisions the owner is approving, not implementation details:
    `/u/<handle>`, where the follow action lives. Adding follow state to every
    search result and creator card is deferred so the discover payload does not
    gain a second module dependency.
+7. **Private-profile follow requests are a future privacy task.** The owner has
+   recorded that requests for private profiles may be considered later. They are
+   not part of TASK-008D. Do not add a request state, an inbox or a
+   private-profile follow path by implication.
 
 ## 3. Dependency and acceptance audit
 
@@ -145,6 +147,8 @@ authorises 008D on top of the unaccepted stack.
   photo-expansion/lightbox area.
 - TASK-009A provider/listings and TASK-009B listing discovery.
 - Android implementation; the shared contract must remain Android-safe.
+- GitHub Actions/CI changes, unrelated repositories, or broad repository
+  maintenance.
 
 ## 5. Acceptance criteria
 
@@ -180,6 +184,8 @@ authorises 008D on top of the unaccepted stack.
 14. `npm run verify`, `db:generate`, `db:migrate` (isolated branch only) and a
     live follow check pass, or any unavailable check is reported as not run
     rather than claimed.
+15. Implementation does not begin until the owner records acceptance of
+    TASK-008A/B/C and explicitly authorizes TASK-008D.
 
 ## 6. Database design
 
@@ -699,9 +705,10 @@ Run at implementation time:
 - `npm run check:responsive` — currently blocked in this VM by missing Chromium
   libraries; report NOT RUN and require owner phone verification at 360–412 px.
 
-## 15. Implementation sequence after approval
+## 15. Implementation sequence after the acceptance gate
 
-1. Reconfirm the task ID decision and branch from `586ab99`.
+1. Confirm owner acceptance of TASK-008A/B/C and explicit authorization, then
+   branch from `586ab99`.
 2. Add `follows` schema and generate/review migration `0003`.
 3. Apply to the isolated Neon branch after verifying target identity.
 4. Add domain contracts and unit tests.
@@ -717,10 +724,10 @@ Run at implementation time:
 
 | Item | Impact | Resolution |
 | --- | --- | --- |
-| `TASK-009A` is already provider/listings | Cannot create two 009A task files or silently renumber roadmap item 9 | Owner must confirm provisional 008D or explicitly reassign/renumber |
+| `TASK-009A` is already provider/listings | Resolved 2026-11-11 | Owner retained TASK-008D; TASK-009A provider/listings remains unchanged |
 | TASK-008A/B/C owner acceptance pending | 008D would sit on unaccepted work | Owner approves the stack or explicitly authorises 008D on top |
-| Follower-scoped visibility absent | TASK-008 “follow visibility” may be read more broadly | Owner confirms binary `public/private` is sufficient for this slice; otherwise expand and re-approve |
-| Following feed includes own posts | Product semantics differ from “followed only” | Owner confirms default 4; trivial to switch before implementation |
+| Follower-scoped visibility absent | TASK-008 “follow visibility” may be read more broadly | **Resolved:** owner approved binary `public/private`; follower-scoped visibility stays a future privacy task |
+| Following feed includes own posts | Product semantics differ from “followed only” | **Resolved:** owner approved followed public creators plus the viewer's own posts |
 | Postponed TASK-007G5 branch edits the profile area | Future merge conflict in `MemberProfileView`/avatar files | 008D does not depend on G5 and must not touch lightbox/avatar code; resolve conflicts only when G5 is resumed |
 | Profile private→public edge retention | Stale graph rows remain | Reads filter visibility; tests cover it; account erasure/orphan cleanup deferred |
 | No cross-module FK | Orphan follows possible after future profile deletion | Documented limitation; erasure task owns cleanup |
@@ -742,17 +749,25 @@ is authorised by this specification.
 - If the following feed is rejected after implementation, remove the scope route
   and page; the graph/table can remain for a later approved slice.
 
-## 18. Approval checklist
+## 18. Approval record and implementation gate
 
-The owner should confirm:
+Approved on 2026-11-11:
 
-- [ ] Task ID: keep provisional **TASK-008D**, or reassign/renumber.
-- [ ] Simple accepted follows; private profiles cannot be followed and return 404.
-- [ ] Visibility stays `public | private` for this slice (no `followers` value).
-- [ ] Following feed = followed public creators + viewer's own posts.
-- [ ] Counts only; no follower/following lists.
-- [ ] Discovery cards link to profiles; no inline follow buttons.
-- [ ] Base is `586ab99`; no G5/profile-avatar work is included.
-- [ ] Implementation may begin only after the above are approved.
+- [x] Task ID: **TASK-008D**. TASK-009A provider/listings remains unchanged.
+- [x] Simple accepted follows only; no pending requests or approvals.
+- [x] Private profiles cannot be followed; private and nonexistent profiles
+  return the same `404`.
+- [x] Visibility stays `public | private`; no `followers` value.
+- [x] Following feed includes the viewer's own posts.
+- [x] Counts only; no follower-list endpoints.
+- [x] Discover creator cards remain links; no inline Follow buttons.
+- [x] Base is `586ab99`; no G5/profile-avatar work is included.
+- [x] Private-profile follow requests may be considered in a future privacy task;
+  they are not silently added here.
 
-**Stop here. Do not implement until the owner records approval.**
+**Implementation gate: CLOSED.** TASK-008A/B/C still require owner acceptance.
+Complete the checklist in `handoff/TASK-008D.md` §10 and explicitly authorize
+TASK-008D before creating the implementation branch, schema or migration.
+
+**Stop here. Do not implement until the owner records acceptance of
+TASK-008A/B/C and authorizes TASK-008D.**

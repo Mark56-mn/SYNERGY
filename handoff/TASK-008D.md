@@ -1,9 +1,12 @@
 # TASK-008D — Creator Follow Graph + Following Feed — handoff
 
-- **Status:** SPEC READY — AWAITING OWNER APPROVAL; **no implementation**
+- **Status:** APPROVED — IMPLEMENTATION BLOCKED ON OWNER ACCEPTANCE OF
+  TASK-008A/B/C; **no implementation**
+- **Approved task ID:** TASK-008D (2026-11-11 owner decision)
+- **TASK-009A preserved:** it remains
+  `task/TASK-009A-provider-profiles-and-listings.md`; it was not renamed,
+  overwritten or renumbered
 - **Requested name:** TASK-009A — Creator Follow Graph + Following Feed
-- **Provisional repository ID:** TASK-008D (because TASK-009A is already
-  `task/TASK-009A-provider-profiles-and-listings.md`)
 - **Branch:** `task/TASK-008D-creator-follow-graph-and-following-feed`
 - **Base:** `586ab99` (`task/TASK-008C-discover-and-explore` tip)
 - **Database:** isolated Neon branch `br-steep-field-b3nti5ov` only; no schema
@@ -59,11 +62,11 @@ Do not describe 008D as accepted work before that happens.
 TASK-008D adds the slice explicitly deferred by 008A (“following feed”) and
 008C (“following a creator needs a backend table”).
 
-## 3. Key design decisions (pending approval)
+## 3. Approved design decisions (2026-11-11)
 
-1. **Task ID:** keep this slice as TASK-008D or explicitly reassign TASK-009A and
-   renumber the existing provider/listings task. Do not overwrite the existing
-   `task/TASK-009A-provider-profiles-and-listings.md`.
+1. **Task ID:** approved as **TASK-008D**. Do not rename or overwrite
+   `task/TASK-009A-provider-profiles-and-listings.md`; it remains the
+   provider/listings task.
 2. **Simple accepted follows:** no requests, pending states, approvals, friends
    or favourites.
 3. **Private profiles cannot be followed:** private/absent targets both return
@@ -76,6 +79,9 @@ TASK-008D adds the slice explicitly deferred by 008A (“following feed”) and
 6. **Counts only:** public `followers`/`following` counts; no list endpoints.
 7. **Discovery stays link-only:** creator cards continue to open
    `/u/<handle>`; follow buttons on discovery/search cards are deferred.
+8. **Private-profile follow requests:** may be considered in a future privacy
+   task; they are not part of TASK-008D. Do not add request state or an inbox by
+   implication.
 
 ## 4. Planned schema and API
 
@@ -273,15 +279,17 @@ No production dependency, environment variable or auth change is expected.
 
 ## 9. Risks / blockers / conflicts
 
-1. **TASK-009A ID collision (P0 before implementation).** Existing provider/
-   listings task owns 009A. This spec is provisional 008D. Owner must confirm.
-2. **Owner acceptance of 008A/B/C still pending.** Do not report 008D as accepted
-   on top of unaccepted work without explicit authorisation.
-3. **Follower-scoped visibility ambiguity.** TASK-008's “follow visibility” could
-   mean `followers` profile/post visibility. This spec deliberately keeps binary
-   `public|private`; if that is wrong, expand and re-approve before coding.
-4. **Following feed includes own posts.** Product default; easy to change before
-   implementation.
+1. **TASK-009A ID collision — RESOLVED 2026-11-11.** The owner retained
+   TASK-008D and directed that the existing provider/listings TASK-009A remain
+   unchanged.
+2. **Owner acceptance of TASK-008A/B/C — BLOCKING GATE.** Do not create the
+   implementation branch, schema, migration or source changes until the owner
+   completes §10 and explicitly authorizes TASK-008D.
+3. **Follower-scoped visibility — RESOLVED for this slice.** The owner approved
+   binary `public|private`; no `followers` value. Follower-scoped profile/content
+   visibility remains a future privacy task.
+4. **Following feed includes own posts — RESOLVED.** The owner approved followed
+   public creators plus the viewer's own posts.
 5. **TASK-007G5 profile/avatar branch is postponed and separate.** It edits the
    same profile component area and avatar lightbox. Do not rebase 008D onto it or
    modify those files. Resolve conflicts only when G5 resumes.
@@ -291,23 +299,119 @@ No production dependency, environment variable or auth change is expected.
 8. **No cross-module FK / account erasure.** Orphans possible only if a future
    deletion path lands; document and clean up there.
 9. **In-memory limiter is per-process.** Existing documented boundary.
+10. **Private-profile follow requests are not implemented.** The owner recorded
+    that they may be considered in a future privacy task. Do not add request
+    state or an inbox to TASK-008D by implication.
 
-## 10. Next action
+## 10. Owner acceptance checklist — TASK-008A/B/C (blocking gate)
 
-**Stop and wait for owner approval.** Do not create the implementation branch,
-write schema, run migrations, modify source, merge anything, or touch `main` /
-Production / auth / the profile-avatar debugging area.
+The owner must complete this before TASK-008D implementation. Record the
+observed result, account/session, URL and any limitation. **Do not mark a check
+passed unless it was actually observed.** The agent has not performed these
+checks and makes no claim that they pass.
 
-After approval:
+### A. Publishing a post
 
-1. Confirm task ID and branch from `586ab99`.
+- [ ] Sign in as a test member with a profile.
+- [ ] Open `/compose`, write a caption, publish.
+- [ ] Confirm the post appears on `/`, the member's profile Posts tab, and after
+      a reload.
+- [ ] Confirm a signed-out visitor can read the public post and cannot see the
+      composer's post action as working.
+
+### B. Liking from a second session
+
+- [ ] Sign in as a second test member in a separate session/private window.
+- [ ] Like the first member's post; confirm the count increments and survives a
+      reload.
+- [ ] Unlike; confirm the count returns and the state is per-member, not shared.
+- [ ] Confirm the first member still sees the post and the correct aggregate
+      count.
+
+### C. Cloudinary media upload
+
+- [ ] Confirm Preview has the Cloudinary variables and
+      `MEDIA_PROVIDER_ADAPTER=cloudinary` scoped Preview-only.
+- [ ] Upload a JPEG/PNG/WebP from the gallery through `/compose`; preview it,
+      publish, and confirm the image renders after reload.
+- [ ] Confirm the stored URL is an `https:` Cloudinary URL in the expected
+      `synergy/posts` folder and that a non-image/oversize file is rejected.
+- [ ] If the credentials are absent, mark this **BLOCKED**, not passed. The
+      earlier live upload was not proven.
+
+### D. Discover, search and trending
+
+- [ ] Open `/discover`; confirm server-rendered results appear without relying
+      on a client fetch.
+- [ ] Search a caption, display name, username and `#topic`; test `%`/`_` as
+      literal input.
+- [ ] Select a trending/topic chip; confirm filtering and the pressed state;
+      select it again to clear.
+- [ ] Check Posts/Creators/Topics tabs and reload a `?q=`/`?topic=` URL.
+- [ ] Confirm no private profile appears in search, creator suggestions or
+      trending counts.
+
+### E. Private-profile exclusion
+
+- [ ] Set a second test member's profile to private.
+- [ ] From the first member's session, confirm the private profile is 404 and
+      its posts are absent from `/`, `/discover`, search, topics, the feed API
+      and the profile API.
+- [ ] Confirm the private owner can still see their own profile and posts.
+- [ ] Set the profile back to public and confirm the expected visibility
+      returns; note any caching delay.
+
+### F. Mobile layout at 360px
+
+- [ ] Check `/`, `/discover`, `/u/<handle>` and the signed-out `/compose` gate
+      at 360 CSS px (or a real 360 dp phone).
+- [ ] Confirm no horizontal overflow, the bottom navigation is usable, tabs and
+      topic chips fit, and loading/empty/error states remain readable.
+- [ ] Record the browser/device and, where possible, a screenshot. Automated
+      `check:responsive` is currently NOT RUN because Chromium libraries are
+      unavailable in this VM.
+
+### G. Preview / SSO limitations
+
+- [ ] Sign in to the Vercel account/team that owns the Preview before opening
+      `https://synergy-git-task-task-008c-discover-and-explore-drop2.vercel.app`.
+- [ ] Record the deployment ID, URL, commit SHA and READY state. Confirm the
+      SHA corresponds to the 008C code commit; the docs commit may follow it.
+- [ ] Confirm `DATABASE_URL` and Cloudinary variables are scoped to Preview and
+      point to the isolated Neon branch, never Production.
+- [ ] Note that the agent has no Vercel token/project link and cannot inspect
+      the SSO-protected Preview. Do not treat a 302 to Vercel login as a passed
+      app check.
+
+### Sign-off
+
+Reply with either:
+
+- `TASK-008A/B/C accepted; TASK-008D implementation authorized.` plus any
+  exceptions/limitations, or
+- the specific failed/blocked checks and the required fix.
+
+## 11. Next action
+
+**The implementation gate is CLOSED.** Do not create the implementation branch,
+write schema, generate/apply migrations, modify source, merge anything, or touch
+`main` / Production / auth / the profile-avatar debugging area.
+
+Repository restrictions remain in force: no implementation or database
+migrations; no `main` or Production changes; no branch merges; no authentication
+changes; no profile/avatar changes; no GitHub Actions; no unrelated repositories.
+
+The next action is owner completion of §10 and explicit authorization. After
+that:
+
+1. Branch from `586ab99`.
 2. Implement in the order in the specification §15.
 3. Update `handoff/CURRENT_STATUS.md` and this handoff with real gate evidence.
-4. If implementation is authorised, stop again at owner acceptance; do not merge.
+4. Stop again at owner acceptance; do not merge.
 
-## 11. Handoff completeness
+## 12. Handoff completeness
 
 A new agent should be able to resume from this file plus the specification
-without repeating discovery. The unresolved items are deliberate approval gates,
-not missing context: task ID, binary visibility, own-post inclusion, acceptance
-of 008A/B/C, and the postponed profile/avatar branch.
+without repeating discovery. The only remaining gate is owner acceptance of
+TASK-008A/B/C and explicit authorization for TASK-008D. Task ID, binary
+visibility, own-post inclusion and the privacy-task boundary are now approved.
