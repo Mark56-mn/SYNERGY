@@ -3,6 +3,12 @@ import "server-only";
 import type { SessionSource } from "@/server/auth/session";
 import { getProfileService } from "@/modules/profile/provider";
 import { createSignedAvatarUrl } from "@/modules/profile/avatar-upload";
+import {
+  createAvatarCleanupRoute,
+  createAvatarDeleteRoute,
+  createPendingAvatarCleanupRoute,
+  createUncommittedAvatarCleanupRoute,
+} from "../avatar-cleanup/route";
 import { isSupabaseMediaReference } from "@/modules/profile/avatar-upload";
 import { getEnv } from "@/server/env";
 import { getLazySessionSource } from "@/server/provider-access";
@@ -84,3 +90,18 @@ const moduleDeps: AvatarDisplayRouteDeps = {
 };
 
 export const GET = createAvatarDisplayRoute(moduleDeps);
+
+const cleanupModuleDeps = {
+  sessionSource: getLazySessionSource(),
+  limiter: createInMemoryRateLimiter({ maxPerWindow: 20, windowSeconds: 60 }),
+};
+
+export const DELETE = createAvatarCleanupRoute(cleanupModuleDeps);
+
+// Re-export cleanup factories for compatibility with either import path.
+export {
+  createAvatarCleanupRoute,
+  createAvatarDeleteRoute,
+  createPendingAvatarCleanupRoute,
+  createUncommittedAvatarCleanupRoute,
+};

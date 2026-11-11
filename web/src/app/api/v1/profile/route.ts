@@ -9,6 +9,7 @@ import {
 import {
   deleteSupabaseMediaAvatar,
   isSupabaseMediaReference,
+  supabaseAvatarPathFromUrl,
 } from "@/modules/profile/avatar-upload";
 import {
   toOwnerProfileDto,
@@ -68,7 +69,54 @@ export function createUpdateProfileRoute(deps: ProfileRouteDeps) {
         );
       }
       const previous = await deps.service.getOwnProfile(session);
-      const profile = await deps.service.updateOwnProfile(session, body!); // Best-effort cleanup of a replaced/cleared Supabase media avatar.
+
+      let profile;
+      try {
+        profile = await deps.service.updateOwnProfile(session, body!);
+      } catch (error) {
+        // If a newly uploaded (but not yet saved) avatar was part of the
+        // failed update, clean it up best-effort without masking the original
+        // error. The previously saved avatar is never touched here.
+        const pending =
+          typeof body?.avatarUrl === "string" ? body.avatarUrl.trim() : null;
+        if (pending && pending !== previous?.avatarUrl) {
+          try {
+            const { getEnv } = await import("@/server/env");
+            const env = getEnv();
+            if (env.SUPABASE_MEDIA_URL && env.SUPABASE_MEDIA_SECRET_KEY) {
+              const config = {
+                url: env.SUPABASE_MEDIA_URL,
+                secretKey: env.SUPABASE_MEDIA_SECRET_KEY,
+                bucket: env.SUPABASE_MEDIA_BUCKET ?? "profile-photos",
+              };
+              let pendingPath = pending;
+              if (!isSupabaseMediaReference(pendingPath)) {
+                pendingPath =
+                  supabaseAvatarPathFromUrl(
+                    pendingPath,
+                    config.url,
+                    config.bucket,
+                  ) ?? pendingPath;
+              }
+              if (
+                isSupabaseMediaReference(pendingPath) &&
+                pendingPath.split("/")[0] === session.userId
+              ) {
+                await deleteSupabaseMediaAvatar(
+                  config,
+                  pendingPath,
+                  session.userId,
+                );
+              }
+            }
+          } catch {
+            // Best-effort cleanup only.
+          }
+        }
+        throw error;
+      }
+
+      // Best-effort cleanup of a replaced/cleared Supabase media avatar.
       if (
         previous?.avatarUrl &&
         previous.avatarUrl !== profile.avatarUrl &&

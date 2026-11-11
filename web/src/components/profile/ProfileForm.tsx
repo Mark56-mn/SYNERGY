@@ -2,7 +2,7 @@
 
 import { normalizeUsername } from "@synergy/domain";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { AvatarUpload } from "@/components/profile/AvatarUpload";
 import { Button } from "@/components/ui/Button";
@@ -57,6 +57,42 @@ export function ProfileForm({
   const [formError, setFormError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [pendingAvatarPath, setPendingAvatarPath] = useState<string | null>(
+    null,
+  );
+  const pendingAvatarRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    pendingAvatarRef.current = pendingAvatarPath;
+  }, [pendingAvatarPath]);
+
+  useEffect(() => {
+    return () => {
+      const path = pendingAvatarRef.current;
+      if (!path) return;
+      void fetch("/api/v1/profile/avatar-cleanup", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ avatarUrl: path }),
+        keepalive: true,
+      }).catch(() => undefined);
+    };
+  }, []);
+
+  async function cleanupPendingAvatar(path: string | null) {
+    if (!path) return;
+    try {
+      await fetch("/api/v1/profile/avatar-cleanup", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ avatarUrl: path }),
+      });
+    } catch {
+      // Best-effort cleanup must never mask the original save error.
+    }
+  }
 
   const normalized = normalizeUsername(username);
   const isOnboarding = mode === "onboarding";
@@ -93,6 +129,8 @@ export function ProfileForm({
     setFormError(null);
     setStatus(null);
 
+    const pendingPath = pendingAvatarPath;
+
     try {
       const response = await fetch(
         isOnboarding ? "/api/v1/profile/onboarding" : "/api/v1/profile",
@@ -118,12 +156,18 @@ export function ProfileForm({
       }
 
       if (response.status === 409) {
+        await cleanupPendingAvatar(pendingPath);
+        setPendingAvatarPath(null);
+        setAvatarUrl(initial?.avatarUrl ?? "");
         setFieldErrors({ username: "That username is already taken." });
         setStatus("Profile not saved.");
         return;
       }
 
       if (!response.ok) {
+        await cleanupPendingAvatar(pendingPath);
+        setPendingAvatarPath(null);
+        setAvatarUrl(initial?.avatarUrl ?? "");
         const failure = (await response.json().catch(() => null)) as {
           error?: { message?: unknown };
         } | null;
@@ -135,10 +179,14 @@ export function ProfileForm({
         return;
       }
 
+      setPendingAvatarPath(null);
       setStatus(isOnboarding ? "Profile created." : "Profile updated.");
       router.push("/profile");
       router.refresh();
     } catch {
+      await cleanupPendingAvatar(pendingPath);
+      setPendingAvatarPath(null);
+      setAvatarUrl(initial?.avatarUrl ?? "");
       setFormError(
         "Network problem — your profile was not saved. Please try again.",
       );
@@ -222,6 +270,9 @@ export function ProfileForm({
         disabled={pending}
         onUploaded={(url) => {
           setAvatarUrl(url);
+          if (url && url !== (initial?.avatarUrl ?? "")) {
+            setPendingAvatarPath(url);
+          }
           setFieldErrors((previous) => ({ ...previous, avatarUrl: undefined }));
         }}
       />
