@@ -368,12 +368,10 @@ export async function createSignedAvatarUrl(
 }
 
 export const supabaseMediaUploader: AvatarUploader = async (input) => {
-  const { config, userId, bytes, mime, previousAvatarUrl } =
-    input as ValidatedAvatarFile & {
-      userId: string;
-      config: SupabaseMediaConfig;
-      previousAvatarUrl?: string | null;
-    };
+  const { config, userId, bytes, mime } = input as ValidatedAvatarFile & {
+    userId: string;
+    config: SupabaseMediaConfig;
+  };
 
   const secretConfig = config as SupabaseMediaConfig;
   const ext =
@@ -399,27 +397,11 @@ export const supabaseMediaUploader: AvatarUploader = async (input) => {
     throw internalError();
   }
 
-  // Replace without leaving an orphaned object behind.
-  if (previousAvatarUrl && isSupabaseMediaReference(previousAvatarUrl)) {
-    try {
-      await deleteSupabaseMediaAvatar(secretConfig, previousAvatarUrl, userId);
-    } catch {
-      // Best-effort cleanup; the new avatar is already stored.
-    }
-  } else if (
-    previousAvatarUrl &&
-    isSupabaseAvatarUrl(
-      previousAvatarUrl,
-      secretConfig.url,
-      secretConfig.bucket,
-    )
-  ) {
-    try {
-      await deleteSupabaseAvatarByUrl(previousAvatarUrl, userId, secretConfig);
-    } catch {
-      // Best-effort cleanup.
-    }
-  }
+  // The previous avatar is intentionally left in place here. It is deleted only
+  // after the new reference has been successfully saved to the profile in Neon
+  // (see /api/v1/profile PATCH), so a cancelled or failed save keeps the old
+  // photo working. The upload itself is atomic; a failed upload leaves no
+  // newly created object behind.
 
   return {
     avatarUrl: objectPath,

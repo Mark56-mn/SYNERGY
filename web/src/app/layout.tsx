@@ -37,12 +37,20 @@ export default async function RootLayout({
 }: {
   children: ReactNode;
 }) {
-  const session = await getCurrentSession();
+  // Authentication is resolved server-side and must fail closed: an unavailable
+  // provider or a thrown verification error becomes "signed out", never a
+  // granted session. Private data is only read after a verified session exists.
+  let session: Awaited<ReturnType<typeof getCurrentSession>> = null;
+  try {
+    session = await getCurrentSession();
+  } catch {
+    session = null;
+  }
 
   // Resolve the member's saved profile (if any) so the mobile account menu
   // can render their real photo, with initials as the fallback. Identity
   // still comes from the verified session; this is a read of the member's
-  // own profile only.
+  // own profile only. A failed read must not blank the app or expose data.
   let profile: Awaited<
     ReturnType<ReturnType<typeof getProfileService>["getOwnProfile"]>
   > | null = null;
@@ -50,7 +58,6 @@ export default async function RootLayout({
     try {
       profile = await getProfileService().getOwnProfile(session);
     } catch {
-      // Navigation must never blank the app because a profile read failed.
       profile = null;
     }
   }
