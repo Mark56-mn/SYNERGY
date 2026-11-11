@@ -93,6 +93,9 @@ describe("POST /api/v1/profile/avatar-cleanup", () => {
       deleteObject: async (_config, path) => {
         deleted.push(path);
       },
+      service: {
+        getOwnProfile: async () => ({ avatarUrl: null }),
+      } as never,
     });
     const response = await route(
       new Request(`${ORIGIN}/api/v1/profile/avatar-cleanup`, {
@@ -114,6 +117,9 @@ describe("POST /api/v1/profile/avatar-cleanup", () => {
         calls += 1;
         throw new Error("missing");
       },
+      service: {
+        getOwnProfile: async () => ({ avatarUrl: null }),
+      } as never,
     });
     const make = () =>
       route(
@@ -217,5 +223,100 @@ describe("TASK-007G3 cleanup safety", () => {
     );
     expect(response.status).toBe(403);
     expect(deleted).toHaveLength(0);
+  });
+});
+
+describe("TASK-007G4 production wiring", () => {
+  it("does not delete when profile lookup is unavailable", async () => {
+    const deleted: string[] = [];
+    const route = createAvatarCleanupRoute({
+      sessionSource: sessionSourceFor({ "token-a": USER_A }),
+      readConfig: () => CONFIG,
+      deleteObject: async (_config, path) => {
+        deleted.push(path);
+      },
+    });
+    const response = await route(
+      new Request(`${ORIGIN}/api/v1/profile/avatar-cleanup`, {
+        method: "POST",
+        headers: authed("token-a"),
+        body: JSON.stringify({ avatarUrl: `${USER_A}/pending.png` }),
+      }),
+    );
+    expect(response.status).toBe(503);
+    expect(deleted).toHaveLength(0);
+  });
+
+  it("does not delete when profile lookup fails", async () => {
+    const deleted: string[] = [];
+    const route = createAvatarCleanupRoute({
+      sessionSource: sessionSourceFor({ "token-a": USER_A }),
+      readConfig: () => CONFIG,
+      deleteObject: async (_config, path) => {
+        deleted.push(path);
+      },
+      service: {
+        getOwnProfile: async () => {
+          throw new Error("database down");
+        },
+      } as never,
+    });
+    const response = await route(
+      new Request(`${ORIGIN}/api/v1/profile/avatar-cleanup`, {
+        method: "POST",
+        headers: authed("token-a"),
+        body: JSON.stringify({ avatarUrl: `${USER_A}/pending.png` }),
+      }),
+    );
+    expect(response.status).toBe(500);
+    expect(deleted).toHaveLength(0);
+  });
+
+  it("protects the saved avatar", async () => {
+    const deleted: string[] = [];
+    const route = createAvatarCleanupRoute({
+      sessionSource: sessionSourceFor({ "token-a": USER_A }),
+      readConfig: () => CONFIG,
+      deleteObject: async (_config, path) => {
+        deleted.push(path);
+      },
+      service: {
+        getOwnProfile: async () => ({
+          avatarUrl: `${USER_A}/saved.png`,
+        }),
+      } as never,
+    });
+    const response = await route(
+      new Request(`${ORIGIN}/api/v1/profile/avatar-cleanup`, {
+        method: "POST",
+        headers: authed("token-a"),
+        body: JSON.stringify({ avatarUrl: `${USER_A}/saved.png` }),
+      }),
+    );
+    expect(response.status).toBe(409);
+    expect(deleted).toHaveLength(0);
+  });
+
+  it("cleans up an uncommitted owned avatar", async () => {
+    const deleted: string[] = [];
+    const route = createAvatarCleanupRoute({
+      sessionSource: sessionSourceFor({ "token-a": USER_A }),
+      readConfig: () => CONFIG,
+      deleteObject: async (_config, path) => {
+        deleted.push(path);
+      },
+      service: {
+        getOwnProfile: async () => ({ avatarUrl: null }),
+      } as never,
+    });
+    const response = await route(
+      new Request(`${ORIGIN}/api/v1/profile/avatar-cleanup`, {
+        method: "POST",
+        headers: authed("token-a"),
+        body: JSON.stringify({ avatarUrl: `${USER_A}/pending.png` }),
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(deleted).toEqual([`${USER_A}/pending.png`]);
   });
 });

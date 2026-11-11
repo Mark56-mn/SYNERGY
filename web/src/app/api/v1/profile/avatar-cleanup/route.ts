@@ -26,6 +26,7 @@ import {
   type SupabaseMediaConfig,
 } from "@/modules/profile/avatar-upload";
 import type { ProfileService } from "@/modules/profile/service";
+import { getProfileService } from "@/modules/profile/provider";
 
 export interface AvatarCleanupRouteDeps {
   sessionSource: SessionSource;
@@ -165,6 +166,12 @@ export function createAvatarCleanupRoute(deps: AvatarCleanupRouteDeps) {
           if (error instanceof AppError) throw error;
           throw internalError();
         }
+      } else {
+        // Profile verification is mandatory: without it we cannot know which
+        // object is the saved avatar, so fail closed and delete nothing.
+        throw serviceUnavailable(
+          "Profile verification is not configured for photo cleanup.",
+        );
       }
 
       const currentPath = canonicalizeSupabaseAvatarReference(
@@ -210,10 +217,17 @@ export const createAvatarDeleteRoute = createAvatarCleanupRoute;
 export const createPendingAvatarCleanupRoute = createAvatarCleanupRoute;
 export const createUncommittedAvatarCleanupRoute = createAvatarCleanupRoute;
 
-const moduleDeps: AvatarCleanupRouteDeps = {
+export const moduleDeps: AvatarCleanupRouteDeps = {
   sessionSource: getLazySessionSource(),
   limiter: createInMemoryRateLimiter({ maxPerWindow: 20, windowSeconds: 60 }),
+  get service(): ProfileService {
+    return getProfileService();
+  },
 };
+
+// Compatibility alias for tests/imports that refer to the production wiring.
+export const productionModuleDeps = moduleDeps;
+export const avatarCleanupModuleDeps = moduleDeps;
 
 export const POST = createAvatarCleanupRoute(moduleDeps);
 export const DELETE = POST;
