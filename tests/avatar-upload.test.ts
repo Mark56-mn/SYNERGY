@@ -221,9 +221,8 @@ describe("POST /api/v1/profile/avatar-upload", () => {
     const response = await route(multipart(pngFile(), authed("token-a")));
     expect(response.status).toBe(503);
     const body = (await response.json()) as { error: { message: string } };
-    expect(body.error.message).toContain("CLOUDINARY_CLOUD_NAME");
-    expect(body.error.message).toContain("CLOUDINARY_API_KEY");
-    expect(body.error.message).toContain("CLOUDINARY_API_SECRET");
+    expect(body.error.message).toContain("SUPABASE_AUTH_URL");
+    expect(body.error.message).toContain("SUPABASE_AUTH_ANON_KEY");
   });
 
   it("uploads for the verified caller only and returns only the URL", async () => {

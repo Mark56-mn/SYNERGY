@@ -43,11 +43,17 @@ export default async function RootLayout({
   // can render their real photo, with initials as the fallback. Identity
   // still comes from the verified session; this is a read of the member's
   // own profile only.
-  const profile = session
-    ? await getProfileService()
-        .getOwnProfile(session)
-        .catch(() => null)
-    : null;
+  let profile: Awaited<
+    ReturnType<ReturnType<typeof getProfileService>["getOwnProfile"]>
+  > | null = null;
+  if (session) {
+    try {
+      profile = await getProfileService().getOwnProfile(session);
+    } catch {
+      // Navigation must never blank the app because a profile read failed.
+      profile = null;
+    }
+  }
 
   return (
     <html lang="en">

@@ -94,14 +94,28 @@ export interface ProfileService {
 function assertProfileAvatarUrlAllowed(url: string | null | undefined): void {
   let cloudinaryEnabled = false;
   let cloudName: string | undefined;
+  let supabaseEnabled = false;
+  let supabaseUrl: string | undefined;
+  let supabaseBucket: string | undefined;
   try {
     const env = getEnv();
     cloudinaryEnabled = env.MEDIA_PROVIDER_ADAPTER === "cloudinary";
     cloudName = env.CLOUDINARY_CLOUD_NAME;
+    if (env.SUPABASE_AUTH_URL && env.SUPABASE_AUTH_ANON_KEY) {
+      supabaseEnabled = true;
+      supabaseUrl = env.SUPABASE_AUTH_URL;
+      supabaseBucket = env.SUPABASE_STORAGE_BUCKET ?? "avatars";
+    }
   } catch {
     // Unconfigured environments keep the https-only contract.
   }
-  assertAvatarUrlAllowed(url, { cloudinaryEnabled, cloudName });
+  assertAvatarUrlAllowed(url, {
+    cloudinaryEnabled,
+    cloudName,
+    supabaseEnabled,
+    supabaseUrl,
+    supabaseBucket,
+  });
 }
 
 /** Empty/whitespace text becomes SQL NULL so "clear the bio" is expressible. */

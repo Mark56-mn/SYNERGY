@@ -11,58 +11,52 @@ import {
   type RateLimiter,
 } from "@/server/ratelimit";
 import { getEnv } from "@/server/env";
+import { readRequestAccessToken } from "@/server/provider-access";
 import {
-  cloudinaryAvatarUploader,
+  supabaseAvatarUploader,
   validateAvatarFile,
-  type CloudinaryConfig,
-  type CloudinaryUploader,
+  type AvatarUploader,
+  type SupabaseConfig,
 } from "@/modules/profile/avatar-upload";
 
 /**
- * `POST /api/v1/profile/avatar-upload` — upload a profile photo.
+ * `POST /api/v1/profile/avatar-upload` — upload a profile photo to Supabase
+ * Storage.
  *
  * Multipart body with a single `file` field. The server:
  *
  * 1. resolves the verified session (never trusts a browser-supplied owner),
  * 2. requires the same origin (cookie CSRF defence),
  * 3. rate-limits the caller,
- * 4. sniffs and validates the bytes (JPEG / PNG / WebP, ≤4 MB, ≤8000px),
- * 5. uploads to Cloudinary with a server-side signature over the fixed,
- *    allowlisted parameter set (fixed folder per member, generated
- *    public_id — the browser chooses neither),
- * 6. returns only the verified `avatarUrl`. The profile row is changed by
- *    the subsequent `PATCH /api/v1/profile` save, so a failed upload never
- *    overwrites a previously saved photo.
+ * 4. sniffs and validates the bytes (JPEG / PNG / WebP, <=4 MB, <=8000px),
+ * 5. uploads to Supabase Storage with the member's own access token under an
+ *    owner-restricted object path, and
+ * 6. returns only the verified public `avatarUrl`.
  *
- * When Cloudinary is not configured (`MEDIA_PROVIDER_ADAPTER` is not
- * `cloudinary`, or any of the three server-only variables is missing) the
- * endpoint answers 503 with a configuration message naming the required
- * Preview variables. It never falls back to a third-party host or a data
- * URL, and it never pretends to succeed.
+ * The profile row is changed by the subsequent `PATCH /api/v1/profile` save, so
+ * a failed upload never overwrites a previously saved photo. Replaced objects
+ * are removed best-effort after a successful upload.
+ *
+ * Cloudinary is no longer used on this path; previously stored Cloudinary URLs
+ * remain valid as a backward-compatible fallback.
  */
 
 export interface AvatarUploadRouteDeps {
   sessionSource: SessionSource;
-  uploader?: CloudinaryUploader;
+  uploader?: AvatarUploader;
   limiter?: RateLimiter;
-  readConfig?: () => CloudinaryConfig | null;
+  readConfig?: () => SupabaseConfig | null;
+  readAccessToken?: (request: Request) => string | null;
 }
 
-function readCloudinaryConfig(): CloudinaryConfig | null {
+function readSupabaseConfig(): SupabaseConfig | null {
   try {
     const env = getEnv();
-    if (env.MEDIA_PROVIDER_ADAPTER !== "cloudinary") return null;
-    if (
-      !env.CLOUDINARY_CLOUD_NAME ||
-      !env.CLOUDINARY_API_KEY ||
-      !env.CLOUDINARY_API_SECRET
-    ) {
-      return null;
-    }
+    if (!env.SUPABASE_AUTH_URL || !env.SUPABASE_AUTH_ANON_KEY) return null;
     return {
-      cloudName: env.CLOUDINARY_CLOUD_NAME,
-      apiKey: env.CLOUDINARY_API_KEY,
-      apiSecret: env.CLOUDINARY_API_SECRET,
+      url: env.SUPABASE_AUTH_URL,
+      anonKey: env.SUPABASE_AUTH_ANON_KEY,
+      bucket: env.SUPABASE_STORAGE_BUCKET ?? "avatars",
     };
   } catch {
     return null;
@@ -74,14 +68,14 @@ export function createAvatarUploadLimiter(): RateLimiter {
 }
 
 export function createAvatarUploadRoute(deps: AvatarUploadRouteDeps) {
-  const uploader = deps.uploader ?? cloudinaryAvatarUploader;
-  const readConfig = deps.readConfig ?? readCloudinaryConfig;
+  const uploader = deps.uploader ?? supabaseAvatarUploader;
+  const readConfig = deps.readConfig ?? readSupabaseConfig;
+  const readAccessToken = deps.readAccessToken ?? readRequestAccessToken;
 
   return createApiRoute({
     sessionSource: deps.sessionSource,
     limiter: deps.limiter,
     handler: async ({ request, session }) => {
-      // Cookie sessions are ambient authority: require our own origin.
       requireSameOrigin(request);
 
       const user = requireAuthenticatedUser(session);
@@ -93,7 +87,7 @@ export function createAvatarUploadRoute(deps: AvatarUploadRouteDeps) {
             error: {
               code: "service_unavailable",
               message:
-                "Photo uploads are not configured yet. The owner must add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET to the Vercel Preview environment.",
+                "Photo uploads are not configured yet. The owner must add SUPABASE_AUTH_URL and SUPABASE_AUTH_ANON_KEY to the environment.",
             },
           },
           {
@@ -133,12 +127,19 @@ export function createAvatarUploadRoute(deps: AvatarUploadRouteDeps) {
         filename: fileName,
       });
 
+      const previousAvatarUrl =
+        typeof form.get("previousAvatarUrl") === "string"
+          ? (form.get("previousAvatarUrl") as string)
+          : null;
+
       let uploaded;
       try {
         uploaded = await uploader({
           ...validated,
           userId: user.userId,
           config,
+          accessToken: readAccessToken(request),
+          previousAvatarUrl,
         });
       } catch (error) {
         if (error instanceof AppError) {

@@ -25,6 +25,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1).optional(),
   SUPABASE_AUTH_URL: z.url().optional(),
   SUPABASE_AUTH_ANON_KEY: z.string().min(1).optional(),
+  SUPABASE_STORAGE_BUCKET: z.string().min(1).optional(),
   MEDIA_PROVIDER_ADAPTER: z.enum(["stub", "cloudinary"]).default("stub"),
   CLOUDINARY_CLOUD_NAME: z.string().min(1).optional(),
   CLOUDINARY_API_KEY: z.string().min(1).optional(),

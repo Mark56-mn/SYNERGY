@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
 
 import {
   ALLOWED_AVATAR_MIME_TYPES,
@@ -48,6 +49,22 @@ export interface CloudinaryConfig {
   apiKey: string;
   apiSecret: string;
 }
+
+export interface SupabaseConfig {
+  url: string;
+  anonKey: string;
+  bucket: string;
+}
+
+/** Generic avatar uploader contract used by the route. */
+export type AvatarUploader = (
+  input: ValidatedAvatarFile & {
+    userId: string;
+    config: CloudinaryConfig | SupabaseConfig;
+    accessToken?: string | null;
+    previousAvatarUrl?: string | null;
+  },
+) => Promise<UploadedAvatar>;
 
 /** Parse the leading bytes of JPEG/PNG/WebP to recover dimensions. */
 export function parseImageDimensions(
@@ -328,15 +345,171 @@ export function isCloudinaryAvatarUrl(url: string, cloudName: string): boolean {
  * deployments. Existing URLs in the stub/dev environment keep the https-only
  * check from the domain schema.
  */
+/**
+ * Is a persisted URL a Supabase Storage public object URL for the configured
+ * project and bucket? Used both for validation and for cleanup of replaced
+ * avatars.
+ */
+export function isSupabaseAvatarUrl(
+  url: string,
+  supabaseUrl: string,
+  bucket: string,
+): boolean {
+  try {
+    const parsed = new URL(url);
+    const base = new URL(supabaseUrl);
+    if (parsed.protocol !== "https:" || parsed.hostname !== base.hostname) {
+      return false;
+    }
+    const prefix = `/storage/v1/object/public/${bucket}/`;
+    return parsed.pathname.startsWith(prefix);
+  } catch {
+    return false;
+  }
+}
+
+export function supabaseAvatarPathFromUrl(
+  url: string,
+  supabaseUrl: string,
+  bucket: string,
+): string | null {
+  try {
+    const parsed = new URL(url);
+    const base = new URL(supabaseUrl);
+    if (parsed.hostname !== base.hostname) return null;
+    const prefix = `/storage/v1/object/public/${bucket}/`;
+    if (!parsed.pathname.startsWith(prefix)) return null;
+    return decodeURIComponent(parsed.pathname.slice(prefix.length));
+  } catch {
+    return null;
+  }
+}
+
+/** Delete a previously stored Supabase avatar object when it belongs to the member. */
+export async function deleteSupabaseAvatarByUrl(
+  url: string,
+  userId: string,
+  config: SupabaseConfig,
+  accessToken?: string | null,
+): Promise<void> {
+  if (!isSupabaseAvatarUrl(url, config.url, config.bucket)) return;
+  const objectPath = supabaseAvatarPathFromUrl(url, config.url, config.bucket);
+  if (!objectPath) return;
+  // Owner-restricted policy: the object path's first segment must be the
+  // member's verified user id.
+  const ownerSegment = objectPath.split("/")[0];
+  if (ownerSegment !== userId) return;
+
+  const client = createClient(config.url, config.anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: accessToken
+      ? { headers: { Authorization: `Bearer ${accessToken}` } }
+      : undefined,
+  });
+  await client.storage.from(config.bucket).remove([objectPath]);
+}
+
+export const supabaseAvatarUploader: AvatarUploader = async (input) => {
+  const { config, userId, bytes, mime, accessToken, previousAvatarUrl } =
+    input as ValidatedAvatarFile & {
+      userId: string;
+      config: SupabaseConfig;
+      accessToken?: string | null;
+      previousAvatarUrl?: string | null;
+    };
+
+  if (!accessToken) {
+    throw internalError();
+  }
+
+  const bucket = config.bucket;
+  const ext =
+    mime === "image/jpeg" ? "jpg" : mime === "image/png" ? "png" : "webp";
+  const publicId = `avatar_${createHash("sha256")
+    .update(userId + Date.now())
+    .digest("hex")
+    .slice(0, 12)}`;
+  const objectPath = `${userId}/${publicId}.${ext}`;
+
+  const client = createClient(config.url, config.anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+  });
+
+  const { error } = await client.storage
+    .from(bucket)
+    .upload(objectPath, bytes, {
+      contentType: mime,
+      upsert: false,
+      cacheControl: "31536000",
+    });
+  if (error) {
+    throw internalError();
+  }
+
+  const { data } = client.storage.from(bucket).getPublicUrl(objectPath);
+  const avatarUrl = data.publicUrl;
+  if (!isSupabaseAvatarUrl(avatarUrl, config.url, bucket)) {
+    throw internalError();
+  }
+
+  // Replace without leaving an orphaned object behind.
+  if (
+    previousAvatarUrl &&
+    isSupabaseAvatarUrl(previousAvatarUrl, config.url, bucket)
+  ) {
+    try {
+      await deleteSupabaseAvatarByUrl(
+        previousAvatarUrl,
+        userId,
+        config,
+        accessToken,
+      );
+    } catch {
+      // Best-effort cleanup; the new avatar is already stored.
+    }
+  }
+
+  return {
+    avatarUrl,
+    mime,
+    bytes: bytes.length,
+    width: input.width,
+    height: input.height,
+  };
+};
+
 export function assertAvatarUrlAllowed(
   url: string | null | undefined,
-  opts: { cloudinaryEnabled: boolean; cloudName?: string },
+  opts: {
+    cloudinaryEnabled: boolean;
+    cloudName?: string;
+    supabaseEnabled?: boolean;
+    supabaseUrl?: string;
+    supabaseBucket?: string;
+  },
 ): void {
   if (!url) return;
-  if (!opts.cloudinaryEnabled) return;
-  if (!opts.cloudName || !isCloudinaryAvatarUrl(url, opts.cloudName)) {
-    throw badRequest(
-      "Profile photos must be uploaded through SYNERGY photo selection.",
-    );
-  }
+
+  // In stub/dev mode (no provider configured) any https URL is accepted.
+  const cloudinaryActive = opts.cloudinaryEnabled && !!opts.cloudName;
+  const supabaseActive = Boolean(
+    opts.supabaseEnabled && opts.supabaseUrl && opts.supabaseBucket,
+  );
+  if (!cloudinaryActive && !supabaseActive) return;
+
+  if (cloudinaryActive && isCloudinaryAvatarUrl(url, opts.cloudName!)) return;
+  if (
+    supabaseActive &&
+    isSupabaseAvatarUrl(url, opts.supabaseUrl!, opts.supabaseBucket!)
+  )
+    return;
+
+  // Backward-compatible fallback: previously stored Cloudinary URLs remain
+  // valid even after the avatar path migrates to Supabase.
+  if (isCloudinaryAvatarUrl(url, opts.cloudName ?? "")) return;
+
+  throw badRequest(
+    "Profile photos must be uploaded through SYNERGY photo selection.",
+  );
 }

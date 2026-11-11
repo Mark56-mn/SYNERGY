@@ -110,6 +110,7 @@ export function AvatarUpload({
     try {
       const formData = new FormData();
       formData.append("file", file);
+      if (currentUrl) formData.append("previousAvatarUrl", currentUrl);
 
       const response = await fetch("/api/v1/profile/avatar-upload", {
         method: "POST",

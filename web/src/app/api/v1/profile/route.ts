@@ -7,6 +7,10 @@ import {
   getProfileService,
 } from "@/modules/profile/provider";
 import {
+  deleteSupabaseAvatarByUrl,
+  isSupabaseAvatarUrl,
+} from "@/modules/profile/avatar-upload";
+import {
   toOwnerProfileDto,
   type ProfileService,
 } from "@/modules/profile/service";
@@ -57,7 +61,47 @@ export function createUpdateProfileRoute(deps: ProfileRouteDeps) {
       // Cookie sessions are ambient authority: a browser mutation must come
       // from our own origin (CSRF defence, SECURITY_RULES.md).
       requireSameOrigin(request);
+      if (!session) {
+        throw new (await import("@/server/http/errors")).AppError(
+          "unauthorized",
+          "Authentication required.",
+        );
+      }
+      const previous = await deps.service.getOwnProfile(session);
       const profile = await deps.service.updateOwnProfile(session, body!);
+
+      // Best-effort cleanup of a replaced/cleared Supabase avatar object.
+      if (
+        previous?.avatarUrl &&
+        previous.avatarUrl !== profile.avatarUrl &&
+        isSupabaseAvatarUrl(
+          previous.avatarUrl,
+          process.env.SUPABASE_AUTH_URL ?? "",
+          process.env.SUPABASE_STORAGE_BUCKET ?? "avatars",
+        )
+      ) {
+        try {
+          const { getEnv } = await import("@/server/env");
+          const env = getEnv();
+          if (env.SUPABASE_AUTH_URL && env.SUPABASE_AUTH_ANON_KEY) {
+            const { readRequestAccessToken } =
+              await import("@/server/provider-access");
+            await deleteSupabaseAvatarByUrl(
+              previous.avatarUrl,
+              session.userId,
+              {
+                url: env.SUPABASE_AUTH_URL,
+                anonKey: env.SUPABASE_AUTH_ANON_KEY,
+                bucket: env.SUPABASE_STORAGE_BUCKET ?? "avatars",
+              },
+              readRequestAccessToken(request),
+            );
+          }
+        } catch {
+          // Cleanup is best-effort; the profile update already succeeded.
+        }
+      }
+
       return Response.json(
         { profile: toOwnerProfileDto(profile) },
         { headers: { "cache-control": "no-store" } },
