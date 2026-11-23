@@ -14,6 +14,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/cn";
+import {
+  logUploadDiagnostic,
+  readUploadRequestId,
+} from "@/lib/upload-diagnostics";
 
 const DRAFT_KEY = "synergy.compose.draft.v1";
 const ACCEPTED = "image/jpeg,image/png,image/webp";
@@ -167,18 +171,45 @@ export function PostStudio({
 
     const form = new FormData();
     form.append("file", file);
-    const response = await fetch("/api/v1/posts/media-upload", {
-      method: "POST",
-      credentials: "same-origin",
-      body: form,
-    });
+    const startedAt = Date.now();
+    let response: Response;
+    try {
+      response = await fetch("/api/v1/posts/media-upload", {
+        method: "POST",
+        credentials: "same-origin",
+        body: form,
+      });
+    } catch (error) {
+      // No response reached the browser at all (offline, proxy, dropped
+      // connection). Logged without any file or caption detail.
+      logUploadDiagnostic({
+        stage: "fetch_rejected",
+        duration_ms: Date.now() - startedAt,
+      });
+      throw error;
+    }
+
+    const requestId = readUploadRequestId(response);
+    const elapsed = () => Date.now() - startedAt;
 
     if (response.status === 401) {
+      logUploadDiagnostic({
+        stage: "unauthorized",
+        http_status: 401,
+        request_id: requestId,
+        duration_ms: elapsed(),
+      });
       router.push("/login?next=%2Fcompose");
       return null;
     }
 
     if (!response.ok) {
+      logUploadDiagnostic({
+        stage: "http_error",
+        http_status: response.status,
+        request_id: requestId,
+        duration_ms: elapsed(),
+      });
       const failure = (await response.json().catch(() => null)) as {
         error?: { message?: unknown };
       } | null;
@@ -190,13 +221,38 @@ export function PostStudio({
       return null;
     }
 
-    const payload = (await response.json()) as { mediaUrl?: unknown };
+    let payload: { mediaUrl?: unknown };
+    try {
+      payload = (await response.json()) as { mediaUrl?: unknown };
+    } catch (error) {
+      logUploadDiagnostic({
+        stage: "parse_failed",
+        http_status: response.status,
+        request_id: requestId,
+        duration_ms: elapsed(),
+      });
+      throw error;
+    }
+
     if (typeof payload.mediaUrl !== "string" || !payload.mediaUrl) {
+      logUploadDiagnostic({
+        stage: "missing_media_url",
+        http_status: response.status,
+        request_id: requestId,
+        duration_ms: elapsed(),
+      });
       setError(
         "The server did not confirm the upload. Remove the photo to publish text only.",
       );
       return null;
     }
+
+    logUploadDiagnostic({
+      stage: "succeeded",
+      http_status: response.status,
+      request_id: requestId,
+      duration_ms: elapsed(),
+    });
     setUploadedUrl(payload.mediaUrl);
     return payload.mediaUrl;
   }

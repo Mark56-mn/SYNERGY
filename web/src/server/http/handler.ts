@@ -142,7 +142,7 @@ export function createApiRoute<TBody>(
         }
         return new Response(JSON.stringify(toErrorBody(error)), {
           status: statusForCode(error.code),
-          headers: JSON_HEADERS,
+          headers: { ...JSON_HEADERS, ...error.responseHeaders },
         });
       }
       // Unknown failure: log server-side (redacted), return the generic body.

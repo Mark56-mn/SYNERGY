@@ -38,12 +38,22 @@ export class AppError extends Error {
   readonly code: ErrorCode;
   /** Client-facing message; deliberately free of internals and PII. */
   readonly safeMessage: string;
+  /**
+   * Optional extra response headers. Used for opaque diagnostic correlation
+   * ids (TASK-008G); never for credentials or personal data.
+   */
+  readonly responseHeaders?: Readonly<Record<string, string>>;
 
-  constructor(code: ErrorCode, safeMessage: string) {
+  constructor(
+    code: ErrorCode,
+    safeMessage: string,
+    responseHeaders?: Readonly<Record<string, string>>,
+  ) {
     super(safeMessage);
     this.name = "AppError";
     this.code = code;
     this.safeMessage = safeMessage;
+    this.responseHeaders = responseHeaders;
   }
 }
 

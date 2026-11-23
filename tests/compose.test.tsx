@@ -160,6 +160,196 @@ describe("PostStudio", () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 
+  it("logs a rejected upload fetch without leaking file or caption detail", async () => {
+    const user = userEvent.setup();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          throw new TypeError("Failed to fetch");
+        }),
+      );
+      renderStudio();
+
+      await user.type(screen.getByLabelText("Post caption"), "Private caption");
+      await user.upload(
+        screen.getByLabelText("Choose a photo from your gallery or files"),
+        new File(["png-bytes"], "private-sentinel-name.png", {
+          type: "image/png",
+        }),
+      );
+      await user.click(screen.getByRole("button", { name: "Publish post" }));
+
+      expect(await screen.findByRole("alert")).toBeTruthy();
+      expect(screen.getByRole("alert").textContent).toContain(
+        "Network problem — your post was not published.",
+      );
+      const logged = warn.mock.calls.map((call) => String(call[0])).join("\n");
+      expect(logged).toContain("fetch_rejected");
+      expect(logged).not.toContain("private-sentinel-name.png");
+      expect(logged).not.toContain("Private caption");
+      expect(pushMock).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("logs an HTTP upload failure with the server correlation id", async () => {
+    const user = userEvent.setup();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const requestId = "3f0d1c2b-4a5e-4f60-8b71-9c2d3e4f5a6b";
+    try {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          async () =>
+            new Response(
+              JSON.stringify({ error: { message: "Upload rejected." } }),
+              {
+                status: 400,
+                headers: {
+                  "content-type": "application/json",
+                  "x-upload-request-id": requestId,
+                },
+              },
+            ),
+        ),
+      );
+      renderStudio();
+
+      await user.type(screen.getByLabelText("Post caption"), "Photo post");
+      await user.upload(
+        screen.getByLabelText("Choose a photo from your gallery or files"),
+        new File(["png-bytes"], "photo.png", { type: "image/png" }),
+      );
+      await user.click(screen.getByRole("button", { name: "Publish post" }));
+
+      expect((await screen.findByRole("alert")).textContent).toContain(
+        "Upload rejected.",
+      );
+      const logged = warn.mock.calls.map((call) => String(call[0])).join("\n");
+      expect(logged).toContain("http_error");
+      expect(logged).toContain(requestId);
+      expect(logged).toContain("400");
+      expect(pushMock).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("logs a success response that is not JSON", async () => {
+    const user = userEvent.setup();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          async () => new Response("<html>gateway</html>", { status: 200 }),
+        ),
+      );
+      renderStudio();
+
+      await user.type(screen.getByLabelText("Post caption"), "Photo post");
+      await user.upload(
+        screen.getByLabelText("Choose a photo from your gallery or files"),
+        new File(["png-bytes"], "photo.png", { type: "image/png" }),
+      );
+      await user.click(screen.getByRole("button", { name: "Publish post" }));
+
+      expect((await screen.findByRole("alert")).textContent).toContain(
+        "Network problem — your post was not published.",
+      );
+      const logged = warn.mock.calls.map((call) => String(call[0])).join("\n");
+      expect(logged).toContain("parse_failed");
+      expect(pushMock).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("logs a success payload without a usable media URL", async () => {
+    const user = userEvent.setup();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          async () =>
+            new Response(JSON.stringify({ mediaUrl: "" }), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+        ),
+      );
+      renderStudio();
+
+      await user.type(screen.getByLabelText("Post caption"), "Photo post");
+      await user.upload(
+        screen.getByLabelText("Choose a photo from your gallery or files"),
+        new File(["png-bytes"], "photo.png", { type: "image/png" }),
+      );
+      await user.click(screen.getByRole("button", { name: "Publish post" }));
+
+      expect((await screen.findByRole("alert")).textContent).toContain(
+        "The server did not confirm the upload.",
+      );
+      const logged = warn.mock.calls.map((call) => String(call[0])).join("\n");
+      expect(logged).toContain("missing_media_url");
+      expect(pushMock).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("logs a confirmed upload and then publishes the photo post", async () => {
+    const user = userEvent.setup();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              mediaUrl:
+                "https://res.cloudinary.com/test-cloud/image/upload/synergy/posts/abc/photo.png",
+            }),
+            {
+              status: 200,
+              headers: {
+                "content-type": "application/json",
+                "x-upload-request-id": "3f0d1c2b-4a5e-4f60-8b71-9c2d3e4f5a6b",
+              },
+            },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ post: { id: "post-1" } }), {
+            status: 201,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      vi.stubGlobal("fetch", fetchMock);
+      renderStudio();
+
+      await user.type(screen.getByLabelText("Post caption"), "Photo post");
+      await user.upload(
+        screen.getByLabelText("Choose a photo from your gallery or files"),
+        new File(["png-bytes"], "photo.png", { type: "image/png" }),
+      );
+      await user.click(screen.getByRole("button", { name: "Publish post" }));
+
+      await waitFor(() =>
+        expect(pushMock).toHaveBeenCalledWith("/u/ada_okoro"),
+      );
+      const logged = warn.mock.calls.map((call) => String(call[0])).join("\n");
+      expect(logged).toContain("succeeded");
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it("restores a text draft saved on this device", () => {
     window.localStorage.setItem(
       DRAFT_KEY,

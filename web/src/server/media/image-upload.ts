@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 
-import { badRequest, internalError } from "@/server/http/errors";
+import { AppError, badRequest } from "@/server/http/errors";
 
 import { isCloudinaryFolderUrl } from "./cloudinary";
 
@@ -53,6 +53,43 @@ export interface CloudinaryConfig {
   cloudName: string;
   apiKey: string;
   apiSecret: string;
+}
+
+/**
+ * Provider failure classes (TASK-008G). The user-facing message and HTTP
+ * status are byte-for-byte what the old generic error produced; only the
+ * server-side diagnosis became specific.
+ */
+export type ProviderFailureReason =
+  | "network"
+  | "timeout"
+  | "provider_status"
+  | "malformed_response"
+  | "invalid_url";
+
+/**
+ * A Cloudinary call that did not produce a verified URL.
+ *
+ * It extends `AppError` so every existing caller keeps the same 500 response
+ * and the same safe message — it never leaks the provider status, body or URL.
+ */
+export class MediaProviderFailure extends AppError {
+  readonly reason: ProviderFailureReason;
+  /** Provider HTTP status, when one was received. Never sent to the browser. */
+  readonly providerStatus?: number;
+
+  constructor(reason: ProviderFailureReason, providerStatus?: number) {
+    super("internal_error", "Something went wrong. Please try again later.");
+    this.name = "MediaProviderFailure";
+    this.reason = reason;
+    this.providerStatus = providerStatus;
+  }
+}
+
+function isTimeoutError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const name = (error as { name?: unknown }).name;
+  return name === "TimeoutError" || name === "AbortError";
 }
 
 /** Parse the leading bytes of JPEG/PNG/WebP to recover dimensions. */
@@ -279,18 +316,20 @@ export async function uploadImageToCloudinary(
   let response: Response;
   try {
     response = await fetch(url, { method: "POST", body: form });
-  } catch {
-    throw internalError();
+  } catch (error) {
+    throw new MediaProviderFailure(
+      isTimeoutError(error) ? "timeout" : "network",
+    );
   }
   if (!response.ok) {
-    throw internalError();
+    throw new MediaProviderFailure("provider_status", response.status);
   }
 
   let body: unknown;
   try {
     body = await response.json();
   } catch {
-    throw internalError();
+    throw new MediaProviderFailure("malformed_response");
   }
 
   const secureUrl =
@@ -301,7 +340,7 @@ export async function uploadImageToCloudinary(
     typeof secureUrl !== "string" ||
     !isCloudinaryFolderUrl(secureUrl, config.cloudName, folder)
   ) {
-    throw internalError();
+    throw new MediaProviderFailure("invalid_url");
   }
 
   return { secureUrl, publicId };
