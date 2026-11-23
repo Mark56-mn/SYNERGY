@@ -1,6 +1,6 @@
 # TASK-008G — Preview image-upload diagnostics
 
-- **Status:** APPROVED — IMPLEMENTATION AUTHORIZED; NOT STARTED
+- **Status:** IMPLEMENTED — LOCAL VERIFICATION PASS; OWNER PREVIEW TEST PENDING (see `handoff/TASK-008G.md`)
 - **Branch:** `task/TASK-008G-preview-image-upload-diagnostics`
 - **Base:** `task/TASK-008F-preview-deployment-and-posting-verification` at `9ef8a66a29b4252a4434d5c49b66abfe5a142653`
 - **Owner authorization:** Explicit approval on 2026-11-23 to implement the previously proposed Preview image-upload diagnostics on a separate TASK branch.
@@ -92,17 +92,17 @@ Do not assume this list is exhaustive; inspect imports and call paths first. Avo
 
 ## 8. Acceptance criteria
 
-- [ ] A route-entry event can be identified for every upload request that reaches the handler.
-- [ ] Every handled failure is classified into a stable safe code and correlated with the request ID.
-- [ ] Cloudinary rejection, timeout/network failure, malformed response and invalid URL can be distinguished without logging provider secrets or raw payloads.
-- [ ] Client diagnostics distinguish no response, non-2xx, JSON parse failure and invalid success payload.
-- [ ] The request ID is safely available for correlating a client failure with server logs when a response exists.
-- [ ] Existing user-facing generic failure message and upload/post behavior remain unchanged.
-- [ ] Tests cover successful upload, auth/config/validation failure, provider failure classes, response parsing/shape failure, and privacy redaction.
-- [ ] No secrets, user identifiers, filenames, image data, captions, raw URLs or raw provider messages appear in captured logs or test output.
-- [ ] `npm run verify` passes, or every unavailable/failing command is explicitly recorded with evidence and not misrepresented.
-- [ ] Diff contains no unrelated files or behavior changes.
-- [ ] Handoff includes exact changed files, test commands/results, privacy review, and one-step owner Preview verification instructions.
+- [x] A route-entry event can be identified for every upload request that reaches the handler.
+- [x] Every handled failure is classified into a stable safe code and correlated with the request ID.
+- [x] Cloudinary rejection, timeout/network failure, malformed response and invalid URL can be distinguished without logging provider secrets or raw payloads.
+- [x] Client diagnostics distinguish no response, non-2xx, JSON parse failure and invalid success payload.
+- [x] The request ID is safely available for correlating a client failure with server logs when a response exists.
+- [x] Existing user-facing generic failure message and upload/post behavior remain unchanged.
+- [x] Tests cover successful upload, auth/config/validation failure, provider failure classes, response parsing/shape failure, and privacy redaction.
+- [x] No secrets, user identifiers, filenames, image data, captions, raw URLs or raw provider messages appear in captured logs or test output.
+- [x] `npm run verify` passes, or every unavailable/failing command is explicitly recorded with evidence and not misrepresented. (Every wrapped gate was run individually and passed; see handoff §4. `npm audit` was not re-run.)
+- [x] Diff contains no unrelated files or behavior changes.
+- [x] Handoff includes exact changed files, test commands/results, privacy review, and one-step owner Preview verification instructions.
 
 ## 9. Test plan
 
