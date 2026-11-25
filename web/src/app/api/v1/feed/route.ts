@@ -36,6 +36,7 @@ export function createFeedRoute(deps: FeedRouteDeps) {
       const page = await deps.service.getFeed(session, {
         limit: url.searchParams.get("limit"),
         cursor: url.searchParams.get("cursor"),
+        scope: url.searchParams.get("scope"),
       });
       return Response.json(page, {
         headers: { "cache-control": "no-store" },

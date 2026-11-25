@@ -1,6 +1,6 @@
 # TASK-008D — Creator Follow Graph + Following Feed
 
-Status: **APPROVED — IMPLEMENTATION BLOCKED ON OWNER ACCEPTANCE OF TASK-008A/B/C; NOT IMPLEMENTED**
+Status: **IMPLEMENTED — OWNER ACCEPTANCE PENDING (2026-11-15)**
 
 Approved: 2026-11-11. Task ID: **TASK-008D** (owner decision; existing TASK-009A provider/listings remains unchanged).
 
@@ -771,3 +771,278 @@ TASK-008D before creating the implementation branch, schema or migration.
 
 **Stop here. Do not implement until the owner records acceptance of
 TASK-008A/B/C and authorizes TASK-008D.**
+
+## 19. Implementation record — 2026-11-15 (IMPLEMENTED — OWNER ACCEPTANCE PENDING)
+
+The owner directed accelerated sequential execution of the V1 mission and
+explicitly asked the agent to proceed, authorising implementation while keeping
+merge, deletion and commit actions gated on separate approval. The work below
+was completed on the existing TASK-008D branch and remains **uncommitted** in the
+working tree at the owner's instruction.
+
+- Branch: `task/TASK-008D-creator-follow-graph-and-following-feed`
+- Base: `586ab99` (`task/TASK-008C-discover-and-explore` tip)
+- Docs tip before implementation: `add3374`
+- Migration: `0003_lethal_red_ghost.sql` (follows table, composite PK,
+  self-follow CHECK, two lookup indexes)
+- Isolated database: `br-steep-field-b3nti5ov` / project `ancient-band-38052550`
+- Production, `main`, authentication, profile/avatar and unrelated repositories
+  were not changed.
+
+### Delivered
+
+| Area | Files |
+| --- | --- |
+| Domain | `packages/domain/src/social-graph.ts`, `packages/domain/src/index.ts` |
+| Schema | `web/src/modules/social-graph/{schema,index}.ts` |
+| Service/API | `web/src/modules/social-graph/{repository,service,provider}.ts`, `web/src/app/api/v1/profiles/[username]/follow/route.ts` |
+| Feed | `web/src/modules/posts/{repository,service}.ts`, `web/src/app/api/v1/feed/route.ts` |
+| UI | `web/src/components/profile/FollowButton.tsx`, `MemberProfileView.tsx`, `web/src/app/u/[handle]/page.tsx`, `web/src/app/following/page.tsx`, `web/src/components/feed/FeedTabs.tsx`, `MemberFeed.tsx`, `web/src/app/page.tsx` |
+| Migration | `db/migrations/0003_lethal_red_ghost.sql` + journal/snapshot |
+| Tests | `tests/social-graph-service.test.ts`, `follow-routes.test.ts`, `following-feed-route.test.ts`, `follow-button.test.tsx`, `following-feed-ui.test.tsx`, helper doubles |
+| Live check | `scripts/follows-live-check.mjs` |
+
+### Verified commands
+
+- `npm run typecheck` — PASS
+- `npm run lint` — PASS
+- `npm test` — PASS (39 files / 319 tests, +38 new)
+- `npm run build` — PASS
+- `npm run format:check` — PASS
+- `npm run secret-scan` — PASS (286 files)
+- `npm run check:boundaries` — PASS (117 files)
+- `npm run db:generate` — PASS (no drift after `0003`)
+- `npm run db:migrate` — PASS (isolated branch only)
+- `node scripts/follows-live-check.mjs` — PASS (18/18)
+- `npm run verify` — PASS (required gates; audit advisory unchanged)
+- `npm run check:responsive` — NOT RUN (Chromium libraries unavailable in the
+  VM); owner phone verification at 360–412 px remains required.
+
+### Limitations
+
+- Changes are uncommitted by owner instruction.
+- Vercel Preview remains SSO-protected and was not agent-verified; Cloudinary
+  credentials remain absent, so live media upload is still unproven.
+- Private-profile follow requests remain a future privacy task.
+- Comments/post-detail and notifications are **not** part of TASK-008D; they
+  remain V1 gaps and require their own approved task specs.
+
+## 20. Post-review corrections — 2026-11-16 (IMPLEMENTED — OWNER ACCEPTANCE PENDING)
+
+The independent review found no critical issues and requested two narrowly scoped
+corrections. Both are implemented; no other reviewed behaviour changed.
+
+### Correction 1 — unfollow a creator who became private
+
+`resolveForMutation` now takes an explicit `requirePublic` option.
+
+- **Follow** keeps `requirePublic: true`: a private target is still an identical
+  `404` and never creates an edge.
+- **Unfollow** uses `requirePublic: false`, then requires the caller's own edge
+  to already exist before removing it. No edge means the same `404` body as an
+  absent profile, so a private account is not an existence oracle.
+- The viewer is always `session.userId`; the delete is still filtered on both
+  columns, so only the caller's edge can be removed.
+- The response remains the three-field `FollowStateDto`; no visibility flag,
+  identity id or private profile data is returned. A private target's counts are
+  the public counts of its retained edges, which the spec already permits; the
+  profile page itself still 404s for non-owners.
+
+Tests added: service "allows unfollowing a creator who became private when an
+edge exists", "does not reveal a private profile via unfollow without an existing
+edge", "still cannot follow a creator who is private"; route "allows unfollowing
+a creator who became private when an edge exists" and "answers private and
+missing targets identically on unfollow without an edge".
+
+### Correction 2 — deleted-post regression test
+
+`tests/following-feed-route.test.ts` gains "excludes soft-deleted posts from the
+following feed": the followed creator's post is soft-deleted, then
+`GET /api/v1/feed?scope=following` must omit it while still returning the
+viewer's own post.
+
+### Gates after the corrections
+
+- `npm run typecheck` — PASS
+- `npm run lint` — PASS
+- `npm test` — PASS (39 files / 325 tests; +6)
+- `npm run build` — PASS
+- `npm run format:check` — PASS
+- `npm run secret-scan` — PASS (286 files)
+- `npm run check:boundaries` — PASS (117 files)
+- `npm run db:generate` — PASS (no drift; schema unchanged)
+- `node scripts/follows-live-check.mjs` — PASS (18/18)
+- `npm run check:responsive` — NOT RUN (Chromium unavailable)
+
+No schema, migration, auth, profile/avatar, follower-list, follow-request or
+comments/post-detail change was made. Nothing was committed, merged, pushed or
+deployed.
+
+## 21. Final audit findings — 2026-11-16
+
+The acceptance-readiness audit raised two findings. **M2 is resolved. M1 needs one
+owner contract decision and was deliberately not changed in code**, because every
+way to suppress the counts alters a documented contract and the specification is
+in conflict with itself for this case (§21.2).
+
+### 21.1 M2 — the soft-delete regression test is now genuine (RESOLVED)
+
+The earlier test passed vacuously: the in-memory repository's `softDelete`
+spliced the row out of its array, so a deletion assertion could not fail even if
+the deletion predicate disappeared.
+
+Changes:
+
+- `tests/helpers/posts-double.ts` now models `posts.deleted_at` as a tombstone:
+  `softDelete` records the moment in a `deletedAt` map and **keeps the row**,
+  returning `false` for an unknown author or an already-deleted post, mirroring
+  `update ... where id = $1 and identity_id = $2 and deleted_at is null`.
+- Every read in the double excludes tombstoned rows (`listFeed`,
+  `listByUsername`, `listFollowingFeed`, `findByIdForViewer`, `search`,
+  `trendingTopics`, `suggestedCreators` post counts), matching
+  `isNull(posts.deletedAt)` in the real queries.
+- `tests/following-feed-route.test.ts` asserts the row is retained with a
+  `deletedAt` timestamp, that the Following feed omits it while the viewer's own
+  post remains, and that the default feed omits it too.
+- A new test compiles the **real** query builder's WHERE clause with
+  `PgDialect.sqlToQuery` against a capturing fake `Database` (no connection) and
+  asserts the shipped SQL contains `"posts"."deleted_at" is null`, the own-post
+  clause and the visibility clause. The in-memory double cannot see SQL, so this
+  is the only check that fails when the production predicate is removed.
+
+Controlled experiments (both fully reverted, working tree verified identical
+afterwards):
+
+| Experiment | Expected | Observed |
+| --- | --- | --- |
+| Remove `notDeleted(record)` from the double's `listFollowingFeed` | behavioural test fails | **FAIL** — `expected [... 'A followed creator's post'] not to include ...` |
+| Remove `isNull(posts.deletedAt)` from `PostRepository.listFollowingFeed` | SQL test fails | **FAIL** — `expected '("posts"."identity_id" = $1 or ...' to contain '"posts"."deleted_at" is null'` |
+| Both reverted | green | 9/9 in `tests/following-feed-route.test.ts` |
+
+### 21.2 M1 — private-profile aggregate counts (BLOCKED: contract decision)
+
+Current behaviour: an existing follower may unfollow a creator who has since
+become private (approved correction 1), and the `200` response still carries that
+private profile's `followerCount` and `followingCount`.
+
+The specification cannot be satisfied as written:
+
+- §7 — "Counts are non-negative integers derived from the database; never
+  fabricated or estimated."
+- §9 — "Counts are hidden with the profile: a private profile's counts are
+  visible only to its owner because the profile route is 404 to everyone else."
+- §10.2 — successful `DELETE` returns "`200` with the post-delete state".
+
+Suppressing the counts therefore requires either a fabricated value (forbidden by
+§7 and by the correction brief) or a change to the response contract (§10.2).
+Per `AGENTS.md` ("If sources conflict, stop work on the affected requirement,
+document the conflict and propose a resolution. Do not silently choose.") and the
+correction brief itself ("If this requires changing the DTO contract, document
+the compatibility implications and stop for owner approval"), **no code was
+changed for M1**.
+
+Options, smallest first:
+
+| Option | Shape | Compatibility implications | Verdict |
+| --- | --- | --- | --- |
+| **A. Nullable counts** (recommended) | `followerCount: number \| null`, `followingCount: number \| null`; `null` = "not visible to you" | JSON keys unchanged; one new possible value in one case (private-target success). TS type widens, so `MemberProfileView` renders counts only when numeric (never null today, because a private profile 404s before the profile view). No external consumer: the Android app has no follow client and the branch is uncommitted/undeployed. Public-target responses are byte-identical | Smallest honest change; needs owner approval |
+| B. Omit counts for private targets | Optional fields or a second response variant | Shape change: clients must tolerate missing keys; a permissive consumer could read `undefined` as 0 | Rejected — worse than A |
+| C. `204 No Content` for a private-target success | No body | Two success shapes (`200` JSON / `204`); contradicts §10.2; client must branch on status | Rejected — largest behaviour change |
+
+Tests deferred: a test can only lock a decided shape, and adding one now would
+either encode the current leak as expected behaviour or guess at option A. The
+preserved behaviours stay covered: private-target unfollow succeeds with an
+existing edge, private and missing targets stay byte-identical without an edge,
+public unfollow is unchanged, and no edge is created by a follow to a private
+account.
+
+If the owner approves option A, the change is: widen the two fields in
+`FollowStateDto`, return `null` for them in `SocialGraphService.unfollow` when
+the resolved target is private, update the expectation in
+`tests/social-graph-service.test.ts` ("allows unfollowing a creator who became
+private when an edge exists", currently `{ isFollowing: false, followerCount: 0,
+followingCount: 0 }` — note the target's real counts are asserted as `0` there,
+so that test does not distinguish a suppressed count from a leaked one), and add
+a route assertion on the private-unfollow body next to
+`tests/follow-routes.test.ts` "allows unfollowing a creator who became private
+when an edge exists".
+
+## 22. M1 option A approved and implemented — 2026-11-17
+
+The owner approved **option A**: nullable aggregate counts. §7's "counts are
+non-negative integers … never fabricated" and §9's "a private profile's counts
+are visible only to its owner" now coexist because "not visible to you" has its
+own representation (`null`) instead of a fabricated `0`.
+
+### 22.1 Contract
+
+```ts
+export interface FollowStateDto {
+  isFollowing: boolean;
+  followerCount: number | null; // null = not visible to this viewer
+  followingCount: number | null; // null = not visible to this viewer
+}
+```
+
+`schema`/migration untouched; `follows` counts are still read from the database.
+
+### 22.2 Behaviour
+
+| Case | Response |
+| --- | --- |
+| Follow a public profile | `200`, real database counts |
+| Unfollow a public profile | `200`, real database counts |
+| Unfollow a creator who since became private, with an existing edge | `200`, `isFollowing: false`, both counts `null`; only that edge is removed |
+| Follow a private profile | `404` (unchanged) |
+| Unfollow a private profile without a viewer-owned edge | `404`, byte-identical to a nonexistent handle (unchanged) |
+| `GET` follow state of a private profile for a non-owner | `null` state → the profile route `404`s (unchanged) |
+
+Authorization, ownership, origin check, rate limit (`30/min`, keyed
+`user:<id>`), `no-store` and idempotency (`on conflict do nothing`, delete of the
+exact pair) are untouched.
+
+### 22.3 Consumers of `FollowStateDto` audited
+
+| Consumer | Handling |
+| --- | --- |
+| `packages/domain/src/social-graph.ts` | Type widened; no runtime schema, so no serialiser change |
+| `web/src/modules/social-graph/service.ts` | Returns `null` counts only for the private-target unfollow; `stateFor` still returns database numbers |
+| `web/src/app/api/v1/profiles/[username]/follow/route.ts` | Passes the DTO straight to `Response.json` — no coercion, `null` reaches the wire |
+| `web/src/components/profile/FollowButton.tsx` | Only reads `isFollowing`; forwards the DTO to `onConfirmed` |
+| `web/src/components/profile/MemberProfileView.tsx` | `{count ?? "—"}` — a suppressed count renders as an em dash, never as `0`. (Unreachable today: a private profile 404s before this view renders, so the `null` path is defensive) |
+| `tests/helpers/social-graph-double.ts`, tests | Fixtures stay numeric for public targets; the private cases assert `null` |
+
+### 22.4 Tests updated
+
+- `tests/social-graph-service.test.ts` — "allows unfollowing a creator who became
+  private when an edge exists" now asserts
+  `{ isFollowing: false, followerCount: null, followingCount: null }`. Public
+  cases still assert exact numbers, so the tests distinguish "suppressed" from
+  "zero".
+- `tests/follow-routes.test.ts` — the matching route test now asserts
+  `body.followerCount` and `body.followingCount` are `null`, keeping the `200`,
+  the removed edge and the untouched 404 parity checks.
+- No new file was added; the assertions live in the tests that already own the
+  private-unfollow behaviour.
+
+### 22.5 M2 preserved
+
+`tests/helpers/posts-double.ts` tombstone model and the
+`following-feed SQL` predicate guard are unchanged from §21.1.
+
+### 22.6 Verification
+
+| Command | Result |
+| --- | --- |
+| `npm test -- tests/social-graph-service.test.ts tests/follow-routes.test.ts tests/follow-button.test.tsx` | PASS — 3 files / 32 tests |
+| `npm test` | PASS — 39 files / 326 tests |
+| `npm run typecheck` | PASS |
+| `npm run lint` | PASS |
+| `npm run format:check` | PASS |
+| `npm run secret-scan` | PASS |
+| `npm run check:boundaries` | PASS |
+| `npm run build` | PASS |
+| `npm run check:responsive` | NOT RUN — no Chromium in this VM |
+
+`npm ci` was needed because the checkpoint restore dropped `node_modules`;
+`package-lock.json` is unchanged.

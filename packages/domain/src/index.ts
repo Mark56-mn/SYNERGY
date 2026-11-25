@@ -24,6 +24,7 @@ export * from "./users-and-profiles.js";
 export * from "./providers.js";
 export * from "./communities.js";
 export * from "./content.js";
+export * from "./social-graph.js";
 export * from "./listings.js";
 export * from "./bookings.js";
 export * from "./messaging.js";

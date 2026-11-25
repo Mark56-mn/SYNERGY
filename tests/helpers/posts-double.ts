@@ -17,9 +17,18 @@ import type { ProfileVisibility } from "@synergy/domain";
  *
  * It mirrors the real repository's visible contract, most importantly the
  * visibility predicate (`author.visibility === "public" || author is the
- * viewer`), so service tests exercise the same entitlement rule that the SQL
- * enforces. Live Neon behaviour is proved separately by
- * `scripts/posts-live-check.mjs`; these tests prove the service's decisions.
+ * viewer`) and the soft-delete predicate (`deleted_at is null`), so service
+ * tests exercise the same entitlement rules the SQL enforces. Both rules are
+ * modelled as predicates over retained rows:
+ *
+ * - a soft delete sets a tombstone instead of removing the row, exactly like
+ *   `posts.deleted_at`, so a deletion test cannot pass merely because the data
+ *   vanished from the fixture;
+ * - every read filters the tombstone out, matching `isNull(posts.deletedAt)`.
+ *
+ * The SQL text itself is asserted separately in
+ * `tests/following-feed-route.test.ts`, and live Neon behaviour is proved by
+ * `scripts/posts-live-check.mjs` / `scripts/follows-live-check.mjs`.
  */
 
 export function makePost(
@@ -57,9 +66,14 @@ export function makeAuthor(overrides: {
 }
 
 export interface InMemoryPostRepository extends PostRepository {
+  /** Every row ever written, including soft-deleted ones (tombstones). */
   rows: PostRecord[];
   likes: Map<string, Set<string>>;
   authors: Map<string, AuthorRecord>;
+  /** follower id → the creator ids that follower follows. */
+  following: Map<string, Set<string>>;
+  /** post id → the moment it was soft-deleted (`posts.deleted_at`). */
+  deletedAt: Map<string, Date>;
 }
 
 function visible(record: PostRecord, viewerId: string | null): boolean {
@@ -72,6 +86,7 @@ export function createInMemoryPostRepository(
   seed: {
     posts?: PostRecord[];
     authors?: Array<{ identityId: string; author: AuthorRecord }>;
+    following?: Array<{ followerId: string; followingId: string }>;
   } = {},
 ): InMemoryPostRepository {
   const rows = [...(seed.posts ?? [])];
@@ -79,6 +94,18 @@ export function createInMemoryPostRepository(
   const authors = new Map<string, AuthorRecord>(
     (seed.authors ?? []).map((entry) => [entry.identityId, entry.author]),
   );
+  const following = new Map<string, Set<string>>();
+  for (const edge of seed.following ?? []) {
+    const set = following.get(edge.followerId) ?? new Set<string>();
+    set.add(edge.followingId);
+    following.set(edge.followerId, set);
+  }
+  const deletedAt = new Map<string, Date>();
+
+  /** `posts.deleted_at is null`, expressed over retained rows. */
+  function notDeleted(record: PostRecord): boolean {
+    return !deletedAt.has(record.id);
+  }
 
   function page(
     list: PostRecord[],
@@ -120,10 +147,14 @@ export function createInMemoryPostRepository(
     rows,
     likes,
     authors,
+    following,
+    deletedAt,
 
     async listFeed({ viewerId, limit, cursor }) {
       return page(
-        rows.filter((record) => visible(record, viewerId)),
+        rows.filter(
+          (record) => notDeleted(record) && visible(record, viewerId),
+        ),
         limit,
         viewerId,
         cursor,
@@ -134,7 +165,25 @@ export function createInMemoryPostRepository(
       return page(
         rows.filter(
           (record) =>
-            record.author.username === username && visible(record, viewerId),
+            notDeleted(record) &&
+            record.author.username === username &&
+            visible(record, viewerId),
+        ),
+        limit,
+        viewerId,
+        cursor,
+      );
+    },
+
+    async listFollowingFeed({ viewerId, limit, cursor }) {
+      const followed = following.get(viewerId) ?? new Set<string>();
+      return page(
+        rows.filter(
+          (record) =>
+            notDeleted(record) &&
+            (record.identityId === viewerId ||
+              followed.has(record.identityId)) &&
+            visible(record, viewerId),
         ),
         limit,
         viewerId,
@@ -144,7 +193,10 @@ export function createInMemoryPostRepository(
 
     async findByIdForViewer({ id, viewerId }) {
       const record = rows.find(
-        (candidate) => candidate.id === id && visible(candidate, viewerId),
+        (candidate) =>
+          candidate.id === id &&
+          notDeleted(candidate) &&
+          visible(candidate, viewerId),
       );
       if (!record) return null;
       const likers = likes.get(record.id);
@@ -176,11 +228,17 @@ export function createInMemoryPostRepository(
     },
 
     async softDelete({ id, identityId }) {
-      const index = rows.findIndex(
-        (record) => record.id === id && record.identityId === identityId,
+      // Mirrors `update posts set deleted_at = now() where id = $1 and
+      // identity_id = $2 and deleted_at is null`: the row is retained and only
+      // tombstoned, and a second delete reports nothing to change.
+      const record = rows.find(
+        (candidate) =>
+          candidate.id === id &&
+          candidate.identityId === identityId &&
+          notDeleted(candidate),
       );
-      if (index === -1) return false;
-      rows.splice(index, 1);
+      if (!record) return false;
+      deletedAt.set(record.id, new Date());
       return true;
     },
 
@@ -195,7 +253,7 @@ export function createInMemoryPostRepository(
     async search({ query, topic, viewerId, limit }: SearchPostsInput) {
       const needle = query.trim().toLowerCase();
       return rows
-        .filter((record) => visible(record, viewerId))
+        .filter((record) => notDeleted(record) && visible(record, viewerId))
         .filter((record) =>
           needle
             ? record.body.toLowerCase().includes(needle) ||
@@ -218,6 +276,7 @@ export function createInMemoryPostRepository(
     async trendingTopics({ since, limit }) {
       const counts = new Map<string, number>();
       for (const record of rows) {
+        if (!notDeleted(record)) continue;
         if (record.createdAt < since) continue;
         if (record.author.visibility !== "public") continue;
         for (const topic of record.topics) {
@@ -253,8 +312,9 @@ export function createInMemoryPostRepository(
           displayName: author.displayName,
           avatarUrl: author.avatarUrl,
           bio: null,
-          postCount: rows.filter((record) => record.identityId === identityId)
-            .length,
+          postCount: rows.filter(
+            (record) => record.identityId === identityId && notDeleted(record),
+          ).length,
         }))
         .sort(
           (a, b) =>

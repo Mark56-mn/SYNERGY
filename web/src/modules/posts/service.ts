@@ -6,7 +6,10 @@ import {
   postCreateSchema,
   FEED_PAGE_DEFAULT,
   FEED_PAGE_MAX,
+  FEED_SCOPE_DEFAULT,
+  feedScopeSchema,
   type CreatorSuggestionDto,
+  type FeedScope,
   type PostCreateInput,
   type PostPageDto,
   type PostViewDto,
@@ -47,7 +50,11 @@ import type {
 export interface PostsService {
   getFeed(
     session: Session | null,
-    options?: { limit?: string | number | null; cursor?: string | null },
+    options?: {
+      limit?: string | number | null;
+      cursor?: string | null;
+      scope?: string | null;
+    },
   ): Promise<PostPageDto>;
   getPostsByUsername(
     session: Session | null,
@@ -126,6 +133,21 @@ function visibleTo(record: PostRecord, viewerId: string | null): boolean {
   );
 }
 
+/**
+ * Validate the feed scope at the service boundary. Missing/empty means the
+ * default feed; any unknown value is a `400`, never a silent fallback.
+ */
+function parseFeedScope(raw: string | null | undefined): FeedScope {
+  if (raw === null || raw === undefined || raw === "") {
+    return FEED_SCOPE_DEFAULT;
+  }
+  const parsed = feedScopeSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw badRequest("Invalid feed scope.");
+  }
+  return parsed.data;
+}
+
 export function toPostView(
   record: PostRecord,
   viewerId: string | null,
@@ -196,7 +218,24 @@ export function createPostsService(repository: PostRepository): PostsService {
   }
 
   return {
-    getFeed(session, options = {}) {
+    async getFeed(session, options = {}) {
+      const scope = parseFeedScope(options.scope);
+      if (scope === "following") {
+        const user = requireAuthenticatedUser(session);
+        const author = await repository.findAuthorByIdentity(user.userId);
+        if (!author) {
+          throw forbidden(
+            "Create your profile before using the Following feed.",
+          );
+        }
+        return pageFor(session, options, (input) =>
+          repository.listFollowingFeed({
+            viewerId: user.userId,
+            limit: input.limit,
+            cursor: input.cursor,
+          }),
+        );
+      }
       return pageFor(session, options, (input) => repository.listFeed(input));
     },
 

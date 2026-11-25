@@ -8,6 +8,7 @@ import {
   gte,
   ilike,
   inArray,
+  isNotNull,
   isNull,
   lt,
   or,
@@ -16,6 +17,7 @@ import {
 } from "drizzle-orm";
 
 import { profiles } from "@/modules/profile";
+import { follows } from "@/modules/social-graph";
 import type { Database } from "@/server/db/client";
 import type { ProfileVisibility } from "@synergy/domain";
 
@@ -98,6 +100,11 @@ export interface PostRepository {
   listByUsername(input: {
     username: string;
     viewerId: string | null;
+    limit: number;
+    cursor?: FeedCursor | null;
+  }): Promise<PostPage>;
+  listFollowingFeed(input: {
+    viewerId: string;
     limit: number;
     cursor?: FeedCursor | null;
   }): Promise<PostPage>;
@@ -278,6 +285,38 @@ export function createDrizzlePostRepository(db: Database): PostRepository {
           and(
             isNull(posts.deletedAt),
             eq(profiles.username, username),
+            entitlement(viewerId),
+            cursor ? before(cursor) : undefined,
+          ),
+        )
+        .orderBy(desc(posts.createdAt), desc(posts.id))
+        .limit(limit + 1);
+      return pageOf(rows, limit, viewerId);
+    },
+
+    async listFollowingFeed({ viewerId, limit, cursor }) {
+      // A LEFT JOIN keeps the viewer's own posts (self-follows are forbidden)
+      // while restricting everything else to creators the viewer follows. The
+      // composite primary key on `follows` means at most one join row per post,
+      // so pagination cannot duplicate an item.
+      const rows = await db
+        .select(postSelection)
+        .from(posts)
+        .innerJoin(profiles, eq(profiles.identityId, posts.identityId))
+        .leftJoin(
+          follows,
+          and(
+            eq(follows.followingIdentityId, posts.identityId),
+            eq(follows.followerIdentityId, viewerId),
+          ),
+        )
+        .where(
+          and(
+            isNull(posts.deletedAt),
+            or(
+              eq(posts.identityId, viewerId),
+              isNotNull(follows.followingIdentityId),
+            ),
             entitlement(viewerId),
             cursor ? before(cursor) : undefined,
           ),

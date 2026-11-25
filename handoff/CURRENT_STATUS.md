@@ -96,3 +96,91 @@ The earlier B-8 "no database provisioned" assessment is superseded. An existing 
 ## TASK-008D approved — implementation blocked on TASK-008A/B/C acceptance — 2026-11-11
 
 **TASK-008D — Creator Follow Graph + Following Feed** is **APPROVED — IMPLEMENTATION BLOCKED ON OWNER ACCEPTANCE OF TASK-008A/B/C; NOT IMPLEMENTED**. The owner approved retaining **TASK-008D** as the task ID; the existing `task/TASK-009A-provider-profiles-and-listings.md` remains unchanged. Approved scope: accepted public follows only, private and nonexistent profiles share one 404 shape and cannot be followed, visibility stays `public|private`, the Following feed includes followed public creators plus the viewer's own posts, follower/following counts only (no list endpoints), discovery creator cards remain links, and profile/avatar/TASK-007G5 work stays untouched. Private-profile follow requests may be considered in a future privacy task; they are not in TASK-008D. No source, schema, auth, `main`, Production or profile/avatar file was changed; no migration was generated or applied. The owner must complete the acceptance checklist in `handoff/TASK-008D.md` §10 and explicitly authorize implementation. **Do not start implementation before that.** Full details: `task/TASK-008D-creator-follow-graph-and-following-feed.md`, `handoff/TASK-008D.md`.
+
+## TASK-008D implemented — 2026-11-15
+
+**TASK-008D — Creator Follow Graph + Following Feed is IMPLEMENTED — OWNER
+ACCEPTANCE PENDING** on `task/TASK-008D-creator-follow-graph-and-following-feed`
+from base `586ab99`. The owner directed accelerated sequential execution and
+authorised proceeding; changes remain **uncommitted** because commit/merge
+approval was explicitly withheld.
+
+Delivered: `follows` table with composite PK, self-follow CHECK and two indexes
+(migration `0003_lethal_red_ghost.sql`, applied only to isolated Neon branch
+`br-steep-field-b3nti5ov`); `social-graph` module; follow/unfollow API;
+`GET /api/v1/feed?scope=following`; `FollowButton`; real follower/following
+counts; `/following`; feed tabs; scoped `MemberFeed`.
+
+Evidence: `npm run verify` PASS (format, lint, typecheck, 39 files / 319 tests,
+build, secret scan, boundaries); `npm run db:generate` no drift;
+`npm run db:migrate` isolated branch only; `node scripts/follows-live-check.mjs`
+18/18. `npm run check:responsive` remains NOT RUN (Chromium unavailable); owner
+phone verification at 360–412 px is required. Preview remains SSO-protected and
+was not agent-verified. Comments/post-detail and notifications are outside
+TASK-008D and remain V1 gaps requiring approved specs. Details:
+`handoff/TASK-008D.md` §13.
+
+## TASK-008D post-review corrections — 2026-11-16
+
+Two scoped corrections were applied after the independent review (which found no
+critical issues), still **uncommitted** on
+`task/TASK-008D-creator-follow-graph-and-following-feed`:
+
+1. **Unfollow a creator who became private.** `resolveForMutation` gained a
+   `requirePublic` option: follow still refuses private targets with the same
+   `404`, while unfollow may remove the caller's own existing edge. Without an
+   edge the response stays byte-identical to a missing profile, so private
+   profiles are not an existence oracle.
+2. **Deleted-post regression test** for the Following feed.
+
+Evidence: `npm run typecheck`, `lint`, `format:check`, `secret-scan` (286 files),
+`check:boundaries` (117 files) and `build` PASS; `npm test` PASS — 39 files /
+**325 tests** (+6); `npm run db:generate` no drift (schema unchanged);
+`node scripts/follows-live-check.mjs` 18/18. `npm run check:responsive` remains
+NOT RUN (Chromium unavailable). No schema, migration, auth, profile/avatar,
+follower-list, follow-request or comments work was touched; nothing was
+committed, merged, pushed or deployed. Owner acceptance is still pending. Details:
+`handoff/TASK-008D.md` §20.
+
+## TASK-008D final audit findings M1/M2 — 2026-11-16
+
+**M2 resolved, M1 stopped for one owner contract decision.** Uncommitted on
+`task/TASK-008D-creator-follow-graph-and-following-feed` (HEAD `add3374`).
+
+- **M2** — the in-memory repository now tombstones soft deletes
+  (`deletedAt` map, row retained, every read filtered) instead of splicing the
+  row, so the Following-feed deletion test can actually fail. A new test compiles
+  the real query builder's WHERE clause and asserts
+  `"posts"."deleted_at" is null` ships; both controlled experiments (drop the
+  double's filter, drop the production predicate) were observed failing and fully
+  reverted. One expectation in `tests/posts-service.test.ts` that asserted row
+  removal now asserts the tombstone.
+- **M1** — the private-target unfollow still returns the private profile's
+  counts. §9 forbids disclosing them, §7 forbids fabricating a value and §10.2
+  fixes the `200` + `FollowStateDto` shape, so no compatible suppression exists.
+  No code was changed; option A (nullable counts, `null` = not visible) is
+  recommended, with the trade-offs recorded in the task file §21.2.
+
+Gates: `npm test` 39 files / **326 tests**, plus `typecheck`, `lint`,
+`format:check`, `secret-scan`, `check:boundaries` and `build` all PASS.
+`check:responsive` remains NOT RUN (no Chromium). Nothing committed or deployed.
+
+## TASK-008D M1 option A implemented — 2026-11-17
+
+Owner approved nullable aggregate counts; M1 is now closed in code. Uncommitted
+on `task/TASK-008D-creator-follow-graph-and-following-feed` (HEAD `add3374`).
+
+`FollowStateDto.followerCount` / `.followingCount` are `number | null`, and
+unfollowing a creator who has since become private returns `isFollowing: false`
+with both counts `null` after removing only the caller's own edge. Public
+targets still return real database counts; `null` is never converted to `0` (the
+profile view renders an em dash). The existing-edge ownership check, the shared
+`404` for private-without-edge and nonexistent handles, `no-store`, same-origin
+and rate limiting are unchanged. Schema/migrations untouched.
+
+Gates: targeted social-graph/follow-route/FollowButton suites 32/32;
+`npm test` 39 files / **326 tests**; `typecheck`, `lint`, `format:check`,
+`secret-scan`, `check:boundaries` and `build` PASS. `check:responsive` remains
+NOT RUN (no Chromium); `npm ci` was needed after the restore dropped
+`node_modules`. M2's tombstone double and SQL predicate guard are intact. Nothing
+committed, merged, pushed or deployed. Details: `handoff/TASK-008D.md` §22.

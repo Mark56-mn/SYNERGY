@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { MemberPostCard } from "@/components/feed/MemberPostCard";
+import { FollowButton } from "@/components/profile/FollowButton";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/States";
 import { Tabs } from "@/components/ui/Tabs";
-import type { PostViewDto } from "@synergy/domain";
+import type { FollowStateDto, PostViewDto } from "@synergy/domain";
 
 /**
  * Profile surface for a REAL member (TASK-007) — distinct from the fictional
@@ -48,14 +49,20 @@ export function MemberProfileView({
   isOwner,
   posts = [],
   signedIn = false,
+  followState: initialFollowState = null,
 }: {
   profile: MemberProfileData;
   isOwner: boolean;
   /** The member's published posts, already visibility-filtered server-side. */
   posts?: PostViewDto[];
   signedIn?: boolean;
+  /** Real graph state; `null` means it failed to load, so no count is shown. */
+  followState?: FollowStateDto | null;
 }) {
   const [tab, setTab] = useState("about");
+  const [followState, setFollowState] = useState<FollowStateDto | null>(
+    initialFollowState,
+  );
   const hintId = `member-profile-${profile.username}-actions`;
   const mediaPosts = posts.filter((post) => post.mediaUrl);
 
@@ -82,8 +89,15 @@ export function MemberProfileView({
               Edit profile
             </Link>
           ) : (
-            <div className="flex gap-2 pb-1">
-              <ReservedAction label="Follow" hintId={hintId} />
+            <div className="flex flex-wrap items-start justify-end gap-2 pb-1">
+              {followState ? (
+                <FollowButton
+                  username={profile.username}
+                  isFollowing={followState.isFollowing}
+                  signedIn={signedIn}
+                  onConfirmed={setFollowState}
+                />
+              ) : null}
               <ReservedAction label="Message" hintId={hintId} />
             </div>
           )}
@@ -118,6 +132,23 @@ export function MemberProfileView({
           <p className="mt-2 text-xs text-ink-muted">Profile photo.</p>
         ) : null}
 
+        {followState ? (
+          <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+            <div className="flex items-baseline gap-1.5">
+              <dt className="text-ink-muted">Followers</dt>
+              <dd className="font-semibold text-ink">
+                {followState.followerCount ?? "—"}
+              </dd>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <dt className="text-ink-muted">Following</dt>
+              <dd className="font-semibold text-ink">
+                {followState.followingCount ?? "—"}
+              </dd>
+            </div>
+          </dl>
+        ) : null}
+
         {isOwner && profile.visibility === "private" ? (
           <p className="mt-2 text-xs text-ink-muted">
             Only you can open this profile; other visitors are told it does not
@@ -127,8 +158,7 @@ export function MemberProfileView({
 
         {!isOwner ? (
           <p id={hintId} className="mt-2 text-[11px] leading-4 text-ink-muted">
-            Follow and message actions arrive with the community and messaging
-            tasks.
+            Messaging arrives with the messaging task.
           </p>
         ) : null}
       </div>{" "}

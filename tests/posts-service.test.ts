@@ -194,9 +194,13 @@ describe("deletion", () => {
       code: "not_found",
     });
     expect(repository.rows).toHaveLength(1);
+    expect(repository.deletedAt.size).toBe(0);
 
     await service.deletePost(sessionA, post.id);
-    expect(repository.rows).toHaveLength(0);
+    // Soft delete tombstones the row the way `posts.deleted_at` does; the row
+    // is retained and the deletion is what removes it from every read.
+    expect(repository.rows).toHaveLength(1);
+    expect(repository.deletedAt.get(post.id)).toBeInstanceOf(Date);
   });
 
   it("answers 404 for a malformed id rather than touching data", async () => {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { FeedTabs } from "@/components/feed/FeedTabs";
 import { MemberFeed } from "@/components/feed/MemberFeed";
 import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
@@ -45,6 +46,7 @@ export default async function HomePage() {
 
   return (
     <div>
+      <FeedTabs active="for-you" />
       <section className="px-4 pb-4 pt-5 sm:px-5">
         <Badge tone="primary">Connect · create · grow</Badge>
         <h1 className="mt-3 text-2xl font-bold leading-tight tracking-tight text-ink">

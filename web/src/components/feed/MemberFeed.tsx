@@ -22,11 +22,14 @@ export function MemberFeed({
   initial,
   signedIn,
   unavailable = false,
+  scope = "for-you",
 }: {
   initial: PostPageDto;
   signedIn: boolean;
   /** The database could not be reached (development without DATABASE_URL). */
   unavailable?: boolean;
+  /** `following` keeps the same cards but scopes the feed and its copy. */
+  scope?: "for-you" | "following";
 }) {
   const [posts, setPosts] = useState(initial.posts);
   const [nextCursor, setNextCursor] = useState(initial.nextCursor);
@@ -38,10 +41,12 @@ export function MemberFeed({
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(
-        `/api/v1/feed?cursor=${encodeURIComponent(nextCursor)}`,
-        { credentials: "same-origin", cache: "no-store" },
-      );
+      const params = new URLSearchParams({ cursor: nextCursor });
+      if (scope === "following") params.set("scope", "following");
+      const response = await fetch(`/api/v1/feed?${params.toString()}`, {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
       if (!response.ok) {
         setError("More posts could not be loaded. Please try again.");
         return;
@@ -61,10 +66,12 @@ export function MemberFeed({
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 sm:px-5">
         <div>
           <h2 id="feed-heading" className="text-base font-semibold text-ink">
-            Feed
+            {scope === "following" ? "Following" : "Feed"}
           </h2>
           <p className="text-[11px] text-ink-muted">
-            Newest first · no ranking or personalisation yet
+            {scope === "following"
+              ? "Posts from creators you follow · newest first"
+              : "Newest first · no ranking or personalisation yet"}
           </p>
         </div>
         <ButtonLink
@@ -93,22 +100,34 @@ export function MemberFeed({
           </div>
         ) : posts.length === 0 ? (
           <div className="px-4 sm:px-5">
-            <EmptyState
-              title="No posts yet"
-              description={
-                signedIn
-                  ? "Nothing has been published here yet. Share the first update with the community."
-                  : "Nothing has been published here yet. Sign in to write the first post."
-              }
-              action={
-                <ButtonLink
-                  href={signedIn ? "/compose" : "/login?next=%2Fcompose"}
-                  size="sm"
-                >
-                  {signedIn ? "Create the first post" : "Sign in to post"}
-                </ButtonLink>
-              }
-            />
+            {scope === "following" ? (
+              <EmptyState
+                title="Your Following feed is quiet"
+                description="Follow creators to see their posts here."
+                action={
+                  <ButtonLink href="/discover?tab=creators" size="sm">
+                    Explore creators
+                  </ButtonLink>
+                }
+              />
+            ) : (
+              <EmptyState
+                title="No posts yet"
+                description={
+                  signedIn
+                    ? "Nothing has been published here yet. Share the first update with the community."
+                    : "Nothing has been published here yet. Sign in to write the first post."
+                }
+                action={
+                  <ButtonLink
+                    href={signedIn ? "/compose" : "/login?next=%2Fcompose"}
+                    size="sm"
+                  >
+                    {signedIn ? "Create the first post" : "Sign in to post"}
+                  </ButtonLink>
+                }
+              />
+            )}
           </div>
         ) : (
           <ul>

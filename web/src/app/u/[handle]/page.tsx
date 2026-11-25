@@ -6,13 +6,15 @@ import { ProfileView } from "@/components/profile/ProfileView";
 import { getAuthor } from "@/lib/demo-content";
 import { getPostsService } from "@/modules/posts/provider";
 import { getProfileService } from "@/modules/profile/provider";
+import { getSocialGraphService } from "@/modules/social-graph/provider";
 import {
   toOwnerProfileDto,
   toPublicProfileDto,
   type OwnerProfileDto,
   type PublicProfileDto,
 } from "@/modules/profile/service";
-import type { PostViewDto } from "@synergy/domain";
+import type { FollowStateDto, PostViewDto } from "@synergy/domain";
+import type { Session } from "@/server/auth/session";
 import { getCurrentSession } from "@/server/provider-access";
 
 // A username resolves against the database per request: profiles change, and a
@@ -72,6 +74,21 @@ async function loadMemberPosts(username: string): Promise<PostViewDto[]> {
   }
 }
 
+/**
+ * Follow state and real counts. A failure degrades to `null`: the profile still
+ * renders, with no fabricated count and no Follow control to act on.
+ */
+async function loadFollowState(
+  handle: string,
+  session: Session | null,
+): Promise<FollowStateDto | null> {
+  try {
+    return await getSocialGraphService().getFollowState(session, handle);
+  } catch {
+    return null;
+  }
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -97,9 +114,10 @@ export default async function ProfilePage({
 
   const loaded = await loadMemberProfile(handle);
   if (loaded) {
-    const [posts, session] = await Promise.all([
+    const session = await getCurrentSession();
+    const [posts, followState] = await Promise.all([
       loadMemberPosts(loaded.profile.username),
-      getCurrentSession(),
+      loadFollowState(loaded.profile.username, session),
     ]);
     return (
       <MemberProfileView
@@ -107,6 +125,7 @@ export default async function ProfilePage({
         isOwner={loaded.isOwner}
         posts={posts}
         signedIn={Boolean(session)}
+        followState={followState}
       />
     );
   }
