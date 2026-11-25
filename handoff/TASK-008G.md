@@ -93,9 +93,11 @@ no provider call; provider network and provider-status failures; direct
 `fetch_rejected`, `http_error` + request id, `parse_failed`,
 `missing_media_url`, `succeeded`; redaction sentinels on both sides.
 
-Existing tests for the route, composer and avatar upload were not modified and
-still pass, which is the evidence that the response contract and the avatar
-flow's behaviour are unchanged.
+Existing tests for the route and avatar upload were not modified and still
+pass, which is the evidence that the response contract and the avatar flow's
+behaviour are unchanged. `tests/compose.test.tsx` received 190 lines of
+additional tests covering the client-side diagnostics; its prior assertions
+remain intact.
 
 ## 5. Known limitations / risks
 
