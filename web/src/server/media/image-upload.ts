@@ -16,8 +16,9 @@ import { isCloudinaryFolderUrl } from "./cloudinary";
  *    browser-supplied MIME string or filename alone.
  * 2. Size and pixel caps are enforced server-side with the caller's limits.
  * 3. The Cloudinary signature is computed server-side over an allowlisted
- *    parameter set (folder, public_id, resource_type, timestamp). The browser
- *    chooses neither the folder nor the public_id and never sees the secret.
+ *    parameter set (folder, overwrite, public_id, timestamp) that matches the
+ *    submitted fields exactly. The browser chooses neither the folder nor the
+ *    public_id and never sees the secret.
  * 4. The returned `secure_url` must belong to the configured cloud AND the
  *    expected folder, otherwise it is rejected and nothing is persisted.
  * 5. Internal storage identifiers are not returned to the caller.
@@ -254,7 +255,13 @@ export function imageFolderForUser(
   return `synergy/${kind}/${digest}`;
 }
 
-/** Cloudinary signature over the fixed, allowlisted parameter set. */
+/**
+ * Cloudinary signature over the fixed, allowlisted parameter set.
+ *
+ * Canonical form: every `name=value` pair sorted alphabetically by parameter
+ * name, joined with `&`, then the API secret appended with no delimiter, hashed
+ * with SHA-1 and lower-case hex encoded.
+ */
 export function cloudinarySignature(
   params: Record<string, string>,
   apiSecret: string,
@@ -276,6 +283,67 @@ export interface CloudinaryUploadInput {
 }
 
 /**
+ * Upload fields Cloudinary excludes from the upload signature
+ * (https://cloudinary.com/documentation/upload_images — step 4: sign all
+ * request parameters including `timestamp`, excluding `api_key`,
+ * `resource_type`, `cloud_name` and `file`).
+ *
+ * `resource_type` is deliberately not signed AND not sent in the multipart
+ * body: for the REST API it belongs to the endpoint path (`/image/upload`).
+ * Sending it as a field is what made the deployed upload fail with HTTP 401.
+ */
+export const CLOUDINARY_UNSIGNED_UPLOAD_FIELDS = [
+  "api_key",
+  "cloud_name",
+  "file",
+  "resource_type",
+] as const;
+
+export interface CloudinaryUploadPlan {
+  /** Upload endpoint; the resource type lives here, never in the signature. */
+  url: string;
+  /** Exactly the parameters covered by the signature. */
+  signedParams: Record<string, string>;
+  signature: string;
+  /** Every non-file multipart field, i.e. signed params + api_key + signature. */
+  fields: Record<string, string>;
+}
+
+/**
+ * Build the signed Cloudinary upload request deterministically.
+ *
+ * The signature must cover every submitted parameter except the excluded ones,
+ * and must not cover anything that is not submitted. `fields` is therefore
+ * derived from `signedParams`, which makes the two lists impossible to drift:
+ * a new parameter is either signed and sent, or neither.
+ */
+export function buildCloudinaryUploadPlan(input: {
+  folder: string;
+  publicId: string;
+  timestamp: string;
+  config: CloudinaryConfig;
+}): CloudinaryUploadPlan {
+  const signedParams: Record<string, string> = {
+    folder: input.folder,
+    overwrite: "false",
+    public_id: input.publicId,
+    timestamp: input.timestamp,
+  };
+  const signature = cloudinarySignature(signedParams, input.config.apiSecret);
+
+  return {
+    url: `https://api.cloudinary.com/v1_1/${encodeURIComponent(input.config.cloudName)}/image/upload`,
+    signedParams,
+    signature,
+    fields: {
+      ...signedParams,
+      api_key: input.config.apiKey,
+      signature,
+    },
+  };
+}
+
+/**
  * Signed server-side Cloudinary upload. Returns the verified `secure_url`;
  * the secret, signature and public_id never reach the browser.
  */
@@ -289,13 +357,12 @@ export async function uploadImageToCloudinary(
     .digest("hex")
     .slice(0, 12)}`;
 
-  const params: Record<string, string> = {
+  const plan = buildCloudinaryUploadPlan({
     folder,
-    public_id: publicId,
-    resource_type: "image",
+    publicId,
     timestamp,
-  };
-  const signature = cloudinarySignature(params, config.apiSecret);
+    config,
+  });
 
   const form = new FormData();
   form.append(
@@ -303,16 +370,11 @@ export async function uploadImageToCloudinary(
     new Blob([validated.bytes as BlobPart], { type: validated.mime }),
     validated.filename ?? `image.${validated.mime.split("/")[1]}`,
   );
-  form.append("api_key", config.apiKey);
-  form.append("timestamp", timestamp);
-  form.append("signature", signature);
-  form.append("folder", folder);
-  form.append("public_id", publicId);
-  form.append("resource_type", "image");
-  form.append("overwrite", "false");
-  form.append("unique_filename", "true");
+  for (const [name, value] of Object.entries(plan.fields)) {
+    form.append(name, value);
+  }
 
-  const url = `https://api.cloudinary.com/v1_1/${encodeURIComponent(config.cloudName)}/image/upload`;
+  const url = plan.url;
   let response: Response;
   try {
     response = await fetch(url, { method: "POST", body: form });
