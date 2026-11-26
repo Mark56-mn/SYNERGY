@@ -113,3 +113,25 @@ The image-post failure on the TASK-008F Preview could not be located because the
 Gates at the implementation commit: `format:check` 0 · `lint` 0 · `typecheck` 0 · `test` 0 (35 files / **297 tests**) · `build` 0 · `secret-scan` 0 (288 files) · `check:boundaries` 0 (110 files). Focused upload/compose/avatar suites 41/41. `npm run verify` was not run as an aggregate but every gate it wraps was run individually and passed. No live Cloudinary call was made (by design). Known limits: 429 limiter rejections happen in the shared wrapper before the handler, so they carry no request id; no new upload timeout budget was added, so `timeout` is classified when the platform aborts; the diagnostics are not on the Preview until this branch is deployed.
 
 Next action: owner authorizes a **Preview-only** deployment of `2e9086c`, verifies READY + SHA, then performs one controlled image-post attempt and correlates `[synergy-upload]` console output with the `post_media_upload` Vercel log lines (steps and interpretation shortcut in `handoff/TASK-008G.md` §6).
+
+## TASK-008H Cloudinary signed-upload correction — 2026-11-26
+
+**TASK-008H — Cloudinary Signed-Upload Correction is IMPLEMENTED — LOCAL
+VERIFICATION PASS; OWNER PREVIEW TEST PENDING** on
+`task/TASK-008H-cloudinary-signed-upload-correction` from the verified TASK-008G
+remote tip `d4d77d4`.
+
+Cause of the Preview HTTP 401: the upload signed `resource_type`, which
+Cloudinary excludes from the signature (for the REST API it is the
+`/image/upload` path segment), while submitting `overwrite=false` and
+`unique_filename=true` unsigned. The signed set is now exactly
+`folder`, `overwrite=false`, `public_id`, `timestamp`; the multipart fields are
+derived from that set, so the two cannot drift, and `unique_filename` is gone.
+Folder, public ID, error classification and user-facing messages are unchanged.
+
+Evidence: focused suites 5 files / 51 tests; `npm test` 36 files / **307 tests**;
+`npm run verify` PASS (format, lint, typecheck, tests, build, secret scan,
+boundaries); `npm audit` unchanged advisory (B-5). `npm run check:responsive`
+remains NOT RUN (no Chromium). **No live Cloudinary upload was performed and no
+success is claimed** — an owner Preview upload is required, and it needs a
+deployment that this task did not perform. Details: `handoff/TASK-008H.md`.
